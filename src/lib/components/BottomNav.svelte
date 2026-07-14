@@ -1,38 +1,33 @@
 <script lang="ts">
   import { page } from '$app/stores';
-
-  const tabs = [
-    { href: '/food', label: 'Food', icon: '🍽️' },
-    { href: '/progress', label: 'Progress', icon: '📈' },
-    { href: '/workout', label: 'Workout', icon: '🏋️' },
-    { href: '/anatomy', label: 'Anatomy', icon: '🫀' }
-  ];
-  const active = (href: string, path: string) => path.startsWith(href);
+  import { TABS, isActive } from '$lib/nav';
 </script>
 
-<nav class="nav">
-  {#each tabs as t}
-    <a href={t.href} class="tab" class:active={active(t.href, $page.url.pathname)}>
-      <span class="icon">{t.icon}</span>
+<nav class="bottomnav">
+  {#each TABS as t}
+    <a href={t.href} class="tab" class:on={isActive(t.href, $page.url.pathname)}>
+      <span class="ico">{t.icon}</span>
       <span class="lbl">{t.label}</span>
     </a>
   {/each}
 </nav>
 
 <style>
-  .nav {
-    position: fixed; left: 0; right: 0; bottom: 0;
+  .bottomnav {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
     height: calc(var(--nav-h) + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
-    max-width: var(--maxw); margin: 0 auto;
     display: grid; grid-template-columns: repeat(4, 1fr);
-    background: var(--surface); border-top: 1px solid #232327;
+    background: color-mix(in oklab, var(--surface) 82%, transparent);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
   }
   .tab {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 2px; color: var(--muted); font-size: 11px; font-weight: 600;
+    gap: 3px; color: var(--muted); font-size: 10.5px; font-weight: 650;
+    transition: color var(--dur-fast) var(--ease);
   }
-  .tab.active { color: var(--red); }
-  .icon { font-size: 20px; filter: grayscale(1) brightness(1.6); }
-  .tab.active .icon { filter: none; }
+  .ico { font-size: 20px; filter: grayscale(0.6) opacity(0.7); transition: all var(--dur) var(--ease); }
+  .tab.on { color: var(--red); }
+  .tab.on .ico { filter: none; transform: translateY(-1px); }
 </style>

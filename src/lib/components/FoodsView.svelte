@@ -4,7 +4,6 @@
   import FoodCard from './FoodCard.svelte';
   import FoodForm from './FoodForm.svelte';
   import Modal from './Modal.svelte';
-  import Fab from './Fab.svelte';
 
   const filters: (Category | 'all')[] = ['all', 'protein', 'carb', 'veg', 'dairy', 'fruit', 'drink', 'junk', 'other'];
   let filter = $state<Category | 'all'>('all');
@@ -14,27 +13,31 @@
 
   const shown = $derived(
     $foods.filter((f) => {
-      const matchQ = f.name.toLowerCase().includes(query.toLowerCase());
-      const matchF = filter === 'all' ? true : filter === 'junk' ? f.isJunk : f.category === filter;
-      return matchQ && matchF;
+      const q = f.name.toLowerCase().includes(query.toLowerCase());
+      const c = filter === 'all' ? true : filter === 'junk' ? f.isJunk : f.category === filter;
+      return q && c;
     })
   );
 </script>
 
-<input class="search" placeholder="Search foods…" bind:value={query} />
+<div class="toolbar">
+  <input class="input" placeholder="Search foods…" bind:value={query} />
+  <button class="btn btn-primary new" onclick={() => (creating = true)}>＋ New</button>
+</div>
+
 <div class="chips">
   {#each filters as f}
-    <button class="chip" class:active={f === filter} onclick={() => (filter = f)}>{f}</button>
+    <button class="chip" class:on={f === filter} onclick={() => (filter = f)}>{f}</button>
   {/each}
 </div>
 
-<div class="list">
+<p class="count muted num">{shown.length} foods</p>
+
+<div class="grid stagger">
   {#each shown as f (f.id)}
     <FoodCard food={f} onedit={() => (editing = f)} />
   {/each}
 </div>
-
-<Fab onclick={() => (creating = true)} />
 
 <Modal open={creating} title="Add food" onclose={() => (creating = false)}>
   <FoodForm onsave={(d) => { addFood(d); creating = false; }} />
@@ -51,9 +54,11 @@
 </Modal>
 
 <style>
-  .search { width: 100%; background: var(--surface-2); color: var(--text); border: 1px solid #2a2a2e; border-radius: 10px; padding: 12px; font-size: 16px; margin-bottom: 12px; }
-  .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 12px; }
-  .chip { background: var(--surface-2); border: 1px solid #2a2a2e; color: var(--muted); border-radius: 999px; padding: 6px 12px; font-size: 12px; font-weight: 600; white-space: nowrap; text-transform: capitalize; }
-  .chip.active { background: var(--red); color: #fff; border-color: var(--red); }
-  .list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 90px; }
+  .toolbar { display: flex; gap: 10px; align-items: stretch; }
+  .toolbar .input { flex: 1; }
+  .new { flex-shrink: 0; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding: 12px 0 4px; }
+  .count { font-size: 12px; margin: 4px 0 10px; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  @media (min-width: 620px) { .grid { grid-template-columns: 1fr 1fr; } }
 </style>

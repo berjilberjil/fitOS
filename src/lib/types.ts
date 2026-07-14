@@ -13,6 +13,7 @@ export interface Macros {
 export interface Food {
   id: string;
   name: string;
+  icon: string;         // emoji shown on the food, e.g. "🥚"
   category: Category;
   servingLabel: string; // e.g. "1 chapati", "1 cup", "100 g"
   perServing: Macros;
@@ -21,16 +22,16 @@ export interface Food {
   isDefault: boolean;
 }
 
-export interface PlanItem { foodId: string; quantity: number; }
-export interface DietPlan { id: string; name: string; items: PlanItem[]; }
+export type MealKey = 'breakfast' | 'lunch' | 'dinner' | 'snacks';
 
-export interface LogItem {
-  foodId: string;
-  name: string;
-  quantity: number;
-  macros: Macros; // snapshot of scaled macros at log time
-}
-export interface DayLog { date: string; items: LogItem[]; } // date = YYYY-MM-DD
+export interface PlanItem { foodId: string; quantity: number; }
+export type MealMap = Record<MealKey, PlanItem[]>;
+
+/** The repeatable weekly routine, keyed by weekday 0 (Sun) .. 6 (Sat). */
+export type WeekPlan = Record<number, MealMap>;
+
+/** What was actually eaten on a date, grouped by meal. Macros are computed live. */
+export interface DayLog { date: string; meals: MealMap; }
 
 export interface Profile {
   name?: string;

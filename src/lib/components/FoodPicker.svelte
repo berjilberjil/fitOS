@@ -1,51 +1,95 @@
 <script lang="ts">
   import { foods } from '$lib/stores/foods';
-  import FoodCard from './FoodCard.svelte';
-  import type { Food } from '$lib/types';
+  import type { Food, Category } from '$lib/types';
 
-  let { onadd }: { onadd: (foodId: string, quantity: number) => void } = $props();
+  let { onpick, askQuantity = true }: {
+    onpick: (foodId: string, quantity: number) => void;
+    askQuantity?: boolean;
+  } = $props();
 
+  const filters: (Category | 'all')[] = ['all', 'protein', 'carb', 'veg', 'dairy', 'fruit', 'drink', 'junk', 'other'];
   let query = $state('');
+  let filter = $state<Category | 'all'>('all');
   let selected = $state<Food | null>(null);
   let quantity = $state(1);
 
   const results = $derived(
-    $foods.filter((f) => f.name.toLowerCase().includes(query.toLowerCase()))
+    $foods.filter((f) => {
+      const q = f.name.toLowerCase().includes(query.toLowerCase());
+      const c = filter === 'all' ? true : filter === 'junk' ? f.isJunk : f.category === filter;
+      return q && c;
+    })
   );
 
-  function confirm() {
-    if (selected && quantity > 0) onadd(selected.id, quantity);
+  function choose(f: Food) {
+    if (askQuantity) {
+      selected = f;
+      quantity = 1;
+    } else {
+      onpick(f.id, 1);
+    }
   }
 </script>
 
 {#if !selected}
-  <input class="search" placeholder="Search foods…" bind:value={query} />
-  <div class="list">
-    {#each results as f (f.id)}
-      <FoodCard food={f} onpick={() => (selected = f)} />
+  <input class="input" placeholder="Search foods…" bind:value={query} />
+  <div class="chips">
+    {#each filters as f}
+      <button class="chip" class:on={f === filter} onclick={() => (filter = f)}>{f}</button>
     {/each}
-    {#if results.length === 0}<p class="muted">No matches.</p>{/if}
+  </div>
+  <div class="grid">
+    {#each results as f (f.id)}
+      <button class="pick" onclick={() => choose(f)}>
+        <span class="ico">{f.icon}</span>
+        <span class="meta">
+          <span class="nm">{f.name}</span>
+          <span class="sub muted num">{f.servingLabel} · {f.perServing.calories} kcal</span>
+        </span>
+        {#if f.isJunk}<span class="badge badge-junk">junk</span>{/if}
+      </button>
+    {/each}
+    {#if results.length === 0}<p class="muted empty">No matches.</p>{/if}
   </div>
 {:else}
   <div class="qty">
-    <div class="h2">{selected.name}</div>
-    <p class="muted">{selected.servingLabel} · {selected.perServing.calories} kcal each</p>
-    <label>Quantity (servings)
-      <input type="number" min="0.25" step="0.25" bind:value={quantity} />
+    <div class="chosen">
+      <span class="big">{selected.icon}</span>
+      <div>
+        <div class="h2">{selected.name}</div>
+        <p class="muted num">{selected.servingLabel} · {selected.perServing.calories} kcal each</p>
+      </div>
+    </div>
+    <label class="lab">How many servings?
+      <input class="input" type="number" min="0.25" step="0.25" bind:value={quantity} />
     </label>
     <div class="actions">
-      <button class="btn-ghost" onclick={() => (selected = null)}>Back</button>
-      <button class="btn-primary" onclick={confirm}>Add to today</button>
+      <button class="btn btn-outline" onclick={() => (selected = null)}>Back</button>
+      <button class="btn btn-primary grow" onclick={() => onpick(selected!.id, quantity)}>Add</button>
     </div>
   </div>
 {/if}
 
 <style>
-  .search { width: 100%; background: var(--surface-2); color: var(--text); border: 1px solid #2a2a2e; border-radius: 10px; padding: 12px; font-size: 16px; margin-bottom: 12px; }
-  .list { display: flex; flex-direction: column; gap: 8px; }
-  .qty { display: flex; flex-direction: column; gap: 12px; }
-  label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
-  .qty input { background: var(--surface-2); color: var(--text); border: 1px solid #2a2a2e; border-radius: 10px; padding: 12px; font-size: 16px; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; margin: 12px 0; padding-bottom: 2px; }
+  .grid { display: flex; flex-direction: column; gap: 6px; max-height: 52dvh; overflow-y: auto; }
+  .pick {
+    display: flex; align-items: center; gap: 12px; text-align: left;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 10px 12px;
+    transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+  }
+  .pick:hover { border-color: var(--red-line); background: var(--elevated); }
+  .ico { font-size: 24px; width: 30px; text-align: center; }
+  .meta { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+  .nm { font-weight: 650; font-size: 14px; }
+  .sub { font-size: 11.5px; }
+  .empty { padding: 20px; text-align: center; }
+
+  .qty { display: flex; flex-direction: column; gap: 16px; }
+  .chosen { display: flex; align-items: center; gap: 14px; }
+  .big { font-size: 40px; }
+  .lab { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 650; color: var(--muted); }
   .actions { display: flex; gap: 10px; }
-  .actions .btn-primary { flex: 1; }
+  .grow { flex: 1; }
 </style>

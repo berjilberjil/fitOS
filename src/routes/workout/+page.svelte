@@ -1,5 +1,5 @@
-<div class="screen placeholder">
-  <div style="font-size:40px">🏋️</div>
+<div class="placeholder rise">
+  <div class="glyph">🏋️</div>
   <h1 class="h1">Workout</h1>
-  <p class="muted">Coming soon</p>
+  <p class="muted">Routines, sets and progressive overload — coming soon.</p>
 </div>
