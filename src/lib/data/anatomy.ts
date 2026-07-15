@@ -76,7 +76,7 @@ export const muscleGroups: MuscleGroup[] = [
   {
     id: 'triceps',
     name: 'Triceps',
-    icon: '🔺',
+    icon: '🦾',
     view: 'back',
     slugs: ['triceps'],
     blurb: 'Back of the upper arm — two-thirds of arm size. Three heads straighten the elbow.',
@@ -89,7 +89,7 @@ export const muscleGroups: MuscleGroup[] = [
   {
     id: 'forearms',
     name: 'Forearms',
-    icon: '🤝',
+    icon: '✊',
     view: 'front',
     slugs: ['forearm'],
     blurb: 'Grip and wrist strength — the base for every heavy pull.',
@@ -102,7 +102,7 @@ export const muscleGroups: MuscleGroup[] = [
   {
     id: 'core',
     name: 'Core / Abs',
-    icon: '🎽',
+    icon: '🔥',
     view: 'front',
     slugs: ['abs', 'obliques'],
     blurb: 'The midsection braces every lift and shows the six-pack when body fat drops.',

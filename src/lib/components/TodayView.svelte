@@ -13,6 +13,7 @@
   import MealSection from './MealSection.svelte';
   import Modal from './Modal.svelte';
   import FoodPicker from './FoodPicker.svelte';
+  import VoiceLogButton from './VoiceLogButton.svelte';
 
   interface Row { food: Food; quantity: number; index: number; plannedHint?: number; }
 
@@ -76,6 +77,10 @@
     <MacroBar label="Fiber" value={totals.fiber} unit="g" color="var(--ok)" />
     <MacroBar label="Fats" value={totals.fats} unit="g" color="var(--red)" />
   </div>
+
+  {#if offset === 0}
+    <div class="voicebar"><VoiceLogButton {date} plan={$weekPlan} /></div>
+  {/if}
 </div>
 
 <div class="meals stagger">
@@ -108,5 +113,6 @@
   .wd { font-size: 12px; }
   .rings { display: flex; justify-content: space-around; padding: 6px 0 14px; }
   .bars { display: flex; flex-direction: column; gap: 13px; border-top: 1px solid var(--border); padding-top: 15px; }
+  .voicebar { display: flex; justify-content: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border); }
   .meals { display: flex; flex-direction: column; gap: 12px; }
 </style>

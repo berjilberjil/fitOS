@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Profile } from '$lib/types';
   import { bmi, bmiStatus, targetBmi, bmr, tdee, proteinGoal } from '$lib/utils/nutrition';
+  import Icon from './Icon.svelte';
 
   let { profile, onedit }: { profile: Profile; onedit: () => void } = $props();
 
@@ -21,7 +22,7 @@
       <div class="eyebrow">BMI</div>
     </div>
     <span class="pill {status}">{status}</span>
-    <button class="icon-btn" onclick={onedit} aria-label="Edit profile">⚙</button>
+    <button class="icon-btn" onclick={onedit} aria-label="Edit profile"><Icon icon="lucide:settings" size={16} /></button>
   </div>
   <div class="stats">
     <div><span class="k">Target</span><b class="num">{target}</b></div>
@@ -40,7 +41,7 @@
   .pill.normal { background: var(--ok-soft); color: var(--ok); }
   .pill.underweight { background: var(--info-soft); color: var(--info); }
   .pill.overweight { background: var(--warn-soft); color: var(--warn); }
-  .pill.obese { background: var(--red-soft); color: #ff6b76; }
+  .pill.obese { background: var(--red-soft); color: var(--red-bright); }
   .icon-btn { margin-left: auto; }
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; border-top: 1px solid var(--border); padding-top: 14px; }
   .stats div { display: flex; flex-direction: column; gap: 3px; }

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Food, Category, Macros } from '$lib/types';
   import { caloriesFromMacros } from '$lib/utils/nutrition';
+  import Icon from './Icon.svelte';
 
   type FoodDraft = Omit<Food, 'id' | 'isDefault'>;
 
@@ -11,10 +12,9 @@
   } = $props();
 
   const categories: Category[] = ['protein', 'carb', 'veg', 'dairy', 'fruit', 'drink', 'junk', 'other'];
-  const iconChoices = ['🍽️', '🥚', '🍗', '🐟', '🧀', '🍚', '🫓', '🥞', '🥛', '🍌', '🥜', '🍛', '🥣', '🍲', '🥗', '☕', '🥤', '🍩'];
 
   let name = $state(initial?.name ?? '');
-  let icon = $state(initial?.icon ?? '🍽️');
+  const icon = initial?.icon ?? '';
   let category = $state<Category>(initial?.category ?? 'other');
   let servingLabel = $state(initial?.servingLabel ?? '1 serving');
   let protein = $state(initial?.perServing.protein ?? 0);
@@ -41,15 +41,9 @@
 <div class="form">
   <div class="namerow">
     <div class="iconwrap">
-      <span class="preview">{icon}</span>
+      <span class="preview"><Icon icon="lucide:utensils" size={24} /></span>
     </div>
     <label class="grow">Name<input class="input" bind:value={name} placeholder="e.g. Chapati" /></label>
-  </div>
-
-  <div class="iconrow">
-    {#each iconChoices as c}
-      <button class="ib" class:on={c === icon} onclick={() => (icon = c)}>{c}</button>
-    {/each}
   </div>
 
   <div class="two">
@@ -85,11 +79,7 @@
   .form { display: flex; flex-direction: column; gap: 13px; }
   .namerow { display: flex; gap: 12px; align-items: flex-end; }
   .iconwrap { width: 52px; height: 52px; border-radius: var(--radius-md); background: var(--surface-2); border: 1px solid var(--border); display: grid; place-items: center; flex-shrink: 0; }
-  .preview { font-size: 28px; }
-  .iconrow { display: flex; flex-wrap: wrap; gap: 5px; }
-  .ib { width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border); font-size: 18px; transition: all var(--dur-fast) var(--ease); }
-  .ib:hover { border-color: var(--border-strong); }
-  .ib.on { border-color: var(--red); background: var(--red-soft); }
+  .preview { color: var(--muted); display: grid; place-items: center; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   label { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 650; color: var(--muted); }

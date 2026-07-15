@@ -33,6 +33,38 @@ export type WeekPlan = Record<number, MealMap>;
 /** What was actually eaten on a date, grouped by meal. Macros are computed live. */
 export interface DayLog { date: string; meals: MealMap; }
 
+// ---------------- Workout ----------------
+
+export type WorkoutCategory =
+  | 'chest' | 'back' | 'shoulders' | 'arms' | 'legs' | 'core' | 'cardio' | 'boxing';
+
+export interface Exercise {
+  id: string;
+  name: string;
+  icon: string;            // emoji, e.g. "🏋️"
+  category: WorkoutCategory;
+  equipment: string;       // "Barbell" | "Dumbbell" | "Machine" | "Cable" | "Bodyweight"
+  primary: string;         // muscle worked, short label
+  weighted: boolean;       // uses added load → shows the kg stepper (cardio/bodyweight = false)
+  isDefault: boolean;
+}
+
+/** A planned exercise slot in a weekday routine. */
+export interface PlanExercise { exerciseId: string; sets: number; reps: number; }
+export interface WorkoutDayPlan { rest: boolean; items: PlanExercise[]; }
+/** Weekly routine keyed by weekday 0 (Sun) .. 6 (Sat). */
+export type WorkoutWeekPlan = Record<number, WorkoutDayPlan>;
+
+/** What was actually trained on a date — carries the working weight for overload. */
+export interface LoggedExercise {
+  exerciseId: string;
+  sets: number;
+  reps: number;
+  weightKg: number;        // working weight this session
+  done: boolean;
+}
+export interface WorkoutDayLog { date: string; rest: boolean; items: LoggedExercise[]; }
+
 export interface Profile {
   name?: string;
   age: number;

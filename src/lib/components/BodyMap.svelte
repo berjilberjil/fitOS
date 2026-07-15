@@ -18,7 +18,7 @@
   const isClickable = (slug: string) => interactiveSlugs.includes(slug);
 </script>
 
-<svg {viewBox} class="body" role="group" aria-label="{view} body muscle map">
+<svg {viewBox} class="body" role="group" aria-label="{view} body muscle map" tabindex="-1">
   {#each muscles as m (m.slug)}
     {#each m.paths as d, i (i)}
       <path
@@ -37,18 +37,26 @@
 </svg>
 
 <style>
-  .body { width: 100%; max-width: 240px; height: auto; display: block; margin: 0 auto; overflow: visible; }
+  .body {
+    width: 100%; max-width: 240px; height: auto; display: block; margin: 0 auto; overflow: visible;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .body:focus { outline: none; }
   .outline { fill: none; stroke: var(--border-strong); stroke-width: 2; vector-effect: non-scaling-stroke; pointer-events: none; }
   .muscle {
     fill: var(--surface-2); stroke: var(--bg); stroke-width: 1.2;
     transition: fill var(--dur) var(--ease);
+    -webkit-tap-highlight-color: transparent;
   }
+  /* Kill the blue tap/focus box on touch & mouse; keep a ring only for keyboard users. */
+  .muscle:focus { outline: none; }
+  .muscle:focus-visible { outline: 2px solid var(--red-line); outline-offset: 1px; }
   .muscle.clickable { fill: var(--elevated); cursor: pointer; }
   .muscle.clickable:hover { fill: var(--red-soft); }
   .muscle.on { fill: var(--red); animation: glow 1.5s var(--ease) infinite; }
   @keyframes glow {
-    0%, 100% { filter: drop-shadow(0 0 0 rgba(245, 49, 63, 0)); }
-    50% { filter: drop-shadow(0 0 6px rgba(245, 49, 63, 0.7)); }
+    0%, 100% { filter: drop-shadow(0 0 0 rgba(238, 46, 36, 0)); }
+    50% { filter: drop-shadow(0 0 6px rgba(238, 46, 36, 0.7)); }
   }
   @media (prefers-reduced-motion: reduce) { .muscle.on { animation: none; } }
 </style>

@@ -1,12 +1,14 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { TABS, isActive } from '$lib/nav';
+  import Icon from './Icon.svelte';
+  import { navIcon } from '$lib/icons';
 </script>
 
 <nav class="bottomnav">
   {#each TABS as t}
     <a href={t.href} class="tab" class:on={isActive(t.href, $page.url.pathname)}>
-      <span class="ico">{t.icon}</span>
+      <span class="ico"><Icon icon={navIcon(t.href)} size={20} /></span>
       <span class="lbl">{t.label}</span>
     </a>
   {/each}

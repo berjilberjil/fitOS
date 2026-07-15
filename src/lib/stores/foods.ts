@@ -1,5 +1,5 @@
 import type { Food } from '$lib/types';
-import { persisted } from '$lib/utils/persist';
+import { persisted } from '$lib/stores/sync';
 import { newId } from '$lib/utils/id';
 import { seedFoods } from '$lib/data/seed-foods';
 

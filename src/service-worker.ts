@@ -21,6 +21,9 @@ sw.addEventListener('activate', (event) => {
 
 sw.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  if (url.origin !== sw.location.origin) return; // cross-origin (CDN images) → browser handles it
+  if (url.pathname.startsWith('/api')) return; // never cache the backend — always network
   event.respondWith(caches.match(event.request).then((cached) => cached ?? fetch(event.request)));
 });
 

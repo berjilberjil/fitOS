@@ -1,0 +1,57 @@
+// Verified real food photos, keyed by seed food id (seed-1 .. seed-N).
+// Source: Wikimedia Commons (licensed), 330px listed thumbnails — all verified
+// HTTP 200 / image/jpeg. Custom user-added foods have no entry → emoji fallback.
+// Browser <img> requests load these fine; offline they fall back to the emoji.
+
+export const foodImages: Record<string, string> = {
+  'seed-1': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Soft-boiled-egg.jpg/330px-Soft-boiled-egg.jpg',
+  'seed-2': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Chicken_egg01_monovular.jpg/330px-Chicken_egg01_monovular.jpg',
+  'seed-3': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Kycklingfil%C3%A9.jpg/330px-Kycklingfil%C3%A9.jpg',
+  'seed-4': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Sardines_Displayed_at_Toledo_Market.jpg/330px-Sardines_Displayed_at_Toledo_Market.jpg',
+  'seed-5': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/South_Indian_Fish_Curry.JPG/330px-South_Indian_Fish_Curry.JPG',
+  'seed-6': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/ChickenChettinad.JPG/330px-ChickenChettinad.JPG',
+  'seed-7': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Panir_Paneer_Indian_cheese_fresh.jpg/330px-Panir_Paneer_Indian_cheese_fresh.jpg',
+  'seed-8': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Chickpea_BNC.jpg/330px-Chickpea_BNC.jpg',
+  'seed-9': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Mung_beans_%28Vigna_radiata%29.jpg/330px-Mung_beans_%28Vigna_radiata%29.jpg',
+  'seed-10': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Textured_vegetable_protein.jpg/330px-Textured_vegetable_protein.jpg',
+  'seed-11': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/Pesarattu.jpg/330px-Pesarattu.jpg',
+  'seed-12': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Idli_Sambar.JPG/330px-Idli_Sambar.JPG',
+  'seed-13': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/A_plate_of_South_Indian_Masala_Dosa.jpg/330px-A_plate_of_South_Indian_Masala_Dosa.jpg',
+  'seed-14': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Egg_dosa.jpg/330px-Egg_dosa.jpg',
+  'seed-15': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Wheat_Dosa.jpg/330px-Wheat_Dosa.jpg',
+  'seed-16': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fe/2_Chapati_warm_and_ready_to_be_eaten.jpg/330px-2_Chapati_warm_and_ready_to_be_eaten.jpg',
+  'seed-17': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Meshi_001.jpg/330px-Meshi_001.jpg',
+  'seed-18': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d1/Reis_-_Sorte_C_voll.jpg/330px-Reis_-_Sorte_C_voll.jpg',
+  'seed-19': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Curd_Rice.jpg/330px-Curd_Rice.jpg',
+  'seed-20': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/RAGI_MUDDE.JPG/330px-RAGI_MUDDE.JPG',
+  'seed-21': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/Rolled_oats.jpg/330px-Rolled_oats.jpg',
+  'seed-22': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/A_photo_of_Upma.jpg/330px-A_photo_of_Upma.jpg',
+  'seed-23': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Poha.jpg/330px-Poha.jpg',
+  'seed-24': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Ven_pongal_with_sambar_and_chutney.jpg/330px-Ven_pongal_with_sambar_and_chutney.jpg',
+  'seed-25': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/58/Ipomoea_batatas_006.JPG/330px-Ipomoea_batatas_006.JPG',
+  'seed-26': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Pumpkin_sambar.JPG/330px-Pumpkin_sambar.JPG',
+  'seed-27': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Tomato_rasam_garnished_with_coriander%2C_home-made%2C_Tamil_Nadu.jpg/330px-Tomato_rasam_garnished_with_coriander%2C_home-made%2C_Tamil_Nadu.jpg',
+  'seed-28': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Split_pigeon_peas.jpg/330px-Split_pigeon_peas.jpg',
+  'seed-29': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/Cabbage_kootu.jpg/330px-Cabbage_kootu.jpg',
+  'seed-30': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ed/Curd_Setting.jpg/330px-Curd_Setting.jpg',
+  'seed-31': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Glass_of_Milk_%2833657535532%29.jpg/330px-Glass_of_Milk_%2833657535532%29.jpg',
+  'seed-32': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Buttermilk-%28right%29-and-Milk-%28left%29.jpg/330px-Buttermilk-%28right%29-and-Milk-%28left%29.jpg',
+  'seed-33': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Bananavarieties.jpg/330px-Bananavarieties.jpg',
+  'seed-34': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Pink_lady_and_cross_section.jpg/330px-Pink_lady_and_cross_section.jpg',
+  'seed-35': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Dried_Dates.jpg/330px-Dried_Dates.jpg',
+  'seed-36': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Arachis_hypogaea_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-163.jpg/330px-Arachis_hypogaea_-_K%C3%B6hler%E2%80%93s_Medizinal-Pflanzen-163.jpg',
+  'seed-37': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Almonds_-_in_shell%2C_shell_cracked_open%2C_shelled%2C_blanched.jpg/330px-Almonds_-_in_shell%2C_shell_cracked_open%2C_shelled%2C_blanched.jpg',
+  'seed-38': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Latte_and_dark_coffee.jpg/330px-Latte_and_dark_coffee.jpg',
+  'seed-39': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Chai_In_Sakora.jpg/330px-Chai_In_Sakora.jpg',
+  'seed-40': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Young_Coconut_Drink.jpg/330px-Young_Coconut_Drink.jpg',
+  'seed-41': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Malabar_Porotta_%28cropped%29.jpg/330px-Malabar_Porotta_%28cropped%29.jpg',
+  'seed-42': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/%22Hyderabadi_Dum_Biryani%22.jpg/330px-%22Hyderabadi_Dum_Biryani%22.jpg',
+  'seed-43': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/Medu_Vada.JPG/330px-Medu_Vada.JPG',
+  'seed-44': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Stuffed_mirchi_bajji_%2816164286908%29.jpg/330px-Stuffed_mirchi_bajji_%2816164286908%29.jpg',
+  'seed-45': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c4/Samosas%2C_snack_food_at_Wikipedia%27s_16th_Birthday_celebration_in_Chittagong_%2801%29.jpg/330px-Samosas%2C_snack_food_at_Wikipedia%27s_16th_Birthday_celebration_in_Chittagong_%2801%29.jpg',
+  'seed-46': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Jangiri.jpg/330px-Jangiri.jpg',
+  'seed-47': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Tumbler_of_cola_with_ice.jpg/330px-Tumbler_of_cola_with_ice.jpg',
+  'seed-48': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Sesame_seed_hamburger_buns.jpg/330px-Sesame_seed_hamburger_buns.jpg'
+};
+
+export const foodImage = (id: string): string | undefined => foodImages[id];

@@ -1,6 +1,8 @@
 <script lang="ts">
   import { foods } from '$lib/stores/foods';
   import type { Food, Category } from '$lib/types';
+  import { foodImage } from '$lib/data/food-images';
+  import Thumb from './Thumb.svelte';
 
   let { onpick, askQuantity = true }: {
     onpick: (foodId: string, quantity: number) => void;
@@ -41,7 +43,7 @@
   <div class="grid">
     {#each results as f (f.id)}
       <button class="pick" onclick={() => choose(f)}>
-        <span class="ico">{f.icon}</span>
+        <Thumb src={foodImage(f.id)} emoji={f.icon} size={34} radius={9} alt={f.name} />
         <span class="meta">
           <span class="nm">{f.name}</span>
           <span class="sub muted num">{f.servingLabel} · {f.perServing.calories} kcal</span>
@@ -54,7 +56,7 @@
 {:else}
   <div class="qty">
     <div class="chosen">
-      <span class="big">{selected.icon}</span>
+      <Thumb src={foodImage(selected.id)} emoji={selected.icon} size={52} radius={13} alt={selected.name} />
       <div>
         <div class="h2">{selected.name}</div>
         <p class="muted num">{selected.servingLabel} · {selected.perServing.calories} kcal each</p>
@@ -80,7 +82,6 @@
     transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
   }
   .pick:hover { border-color: var(--red-line); background: var(--elevated); }
-  .ico { font-size: 24px; width: 30px; text-align: center; }
   .meta { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
   .nm { font-weight: 650; font-size: 14px; }
   .sub { font-size: 11.5px; }
@@ -88,7 +89,6 @@
 
   .qty { display: flex; flex-direction: column; gap: 16px; }
   .chosen { display: flex; align-items: center; gap: 14px; }
-  .big { font-size: 40px; }
   .lab { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 650; color: var(--muted); }
   .actions { display: flex; gap: 10px; }
   .grow { flex: 1; }

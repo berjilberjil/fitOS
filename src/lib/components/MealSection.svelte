@@ -2,6 +2,8 @@
   import type { Food } from '$lib/types';
   import type { MealDef } from '$lib/data/meals';
   import FoodRow from './FoodRow.svelte';
+  import Icon from './Icon.svelte';
+  import { mealIcon } from '$lib/icons';
 
   interface Row { food: Food; quantity: number; index: number; plannedHint?: number; }
 
@@ -18,7 +20,7 @@
 
 <section class="meal card">
   <header class="head">
-    <span class="ic">{meal.icon}</span>
+    <span class="ic"><Icon icon={mealIcon(meal.key)} size={17} /></span>
     <span class="ttl">{meal.label}</span>
     {#if kcal > 0}<span class="kcal num">{kcal} kcal</span>{/if}
   </header>

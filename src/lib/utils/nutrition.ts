@@ -35,6 +35,30 @@ export function proteinGoal(weightKg: number): number {
   return Math.round(weightKg * 1.8);
 }
 
+// ---- body composition ----
+
+/** Estimated body-fat % from BMI (Deurenberg). Rough, but good for tracking. */
+export function bodyFat(bmiValue: number, age: number, sex: Sex): number {
+  const s = sex === 'male' ? 1 : 0;
+  return round1(Math.max(1.2 * bmiValue + 0.23 * age - 10.8 * s - 5.4, 3));
+}
+
+/** Body-fat % where abs typically become visible. */
+export function sixPackBodyFat(sex: Sex): number {
+  return sex === 'male' ? 10 : 19;
+}
+
+/** Goal weight to reach a target body-fat %, holding lean mass constant. */
+export function weightAtBodyFat(currentKg: number, currentBF: number, targetBF: number): number {
+  const lean = currentKg * (1 - currentBF / 100);
+  return round1(lean / (1 - targetBF / 100));
+}
+
+/** Weeks to lose `kg` at a safe rate (default 0.5 kg/week). */
+export function weeksToLose(kg: number, ratePerWeek = 0.5): number {
+  return Math.max(Math.ceil(kg / ratePerWeek), 0);
+}
+
 export function caloriesFromMacros(
   m: Pick<Macros, 'protein' | 'carbs' | 'fiber' | 'fats'>
 ): number {

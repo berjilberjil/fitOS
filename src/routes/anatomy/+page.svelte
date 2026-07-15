@@ -2,7 +2,10 @@
   import { muscleGroups } from '$lib/data/anatomy';
   import BodyMap from '$lib/components/BodyMap.svelte';
   import MuscleDetail from '$lib/components/MuscleDetail.svelte';
+  import ActivationList from '$lib/components/ActivationList.svelte';
   import SegmentedControl from '$lib/components/SegmentedControl.svelte';
+  import Icon from '$lib/components/Icon.svelte';
+  import { muscleIcon } from '$lib/icons';
 
   let view = $state<'front' | 'back'>('front');
   let selectedId = $state(muscleGroups[0].id);
@@ -41,7 +44,7 @@
 <div class="groups">
   {#each muscleGroups as g}
     <button class="gchip" class:on={g.id === selectedId} onclick={() => pickGroup(g.id)}>
-      <span class="gi">{g.icon}</span><span class="gn">{g.name}</span>
+      <span class="gi"><Icon icon={muscleIcon(g.id)} size={15} /></span><span class="gn">{g.name}</span>
     </button>
   {/each}
 </div>
@@ -54,6 +57,7 @@
   </div>
   <div class="detailwrap">
     <MuscleDetail group={selected} />
+    <ActivationList groupId={selected.id} />
   </div>
 </div>
 

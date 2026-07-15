@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { Food } from '$lib/types';
   import { scaleMacros } from '$lib/utils/nutrition';
+  import { foodImage } from '$lib/data/food-images';
   import Stepper from './Stepper.svelte';
+  import Thumb from './Thumb.svelte';
 
   let { food, quantity, plannedHint, onqty, onswap, onremove }: {
     food: Food;
@@ -16,7 +18,7 @@
 </script>
 
 <div class="row" class:dim={quantity === 0}>
-  <span class="ico">{food.icon}</span>
+  <Thumb src={foodImage(food.id)} emoji={food.icon} size={34} radius={9} alt={food.name} />
   <div class="meta">
     <div class="nm">
       {food.name}
@@ -38,7 +40,6 @@
   }
   .row:last-child { border-bottom: none; }
   .dim { opacity: 0.5; }
-  .ico { font-size: 23px; width: 28px; text-align: center; flex-shrink: 0; }
   .meta { flex: 1; min-width: 0; }
   .nm { font-weight: 650; font-size: 14px; display: flex; align-items: center; gap: 7px; }
   .hint { font-size: 10px; font-weight: 700; color: var(--faint); background: var(--surface-2); padding: 1px 6px; border-radius: var(--pill); }

@@ -1,5 +1,5 @@
 import type { Profile } from '$lib/types';
-import { persisted } from '$lib/utils/persist';
+import { persisted } from '$lib/stores/sync';
 
 export const DEFAULT_PROFILE: Profile = {
   age: 21,

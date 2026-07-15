@@ -29,7 +29,7 @@
   .step:active:not(:disabled) { transform: scale(0.88); }
   .step:disabled { color: var(--faint); cursor: default; }
   .step.plus { background: var(--red); color: #fff; }
-  .step.plus:hover { background: #ff4451; }
+  .step.plus:hover { background: var(--red-hover); }
   .val { min-width: 30px; text-align: center; font-size: 14px; font-weight: 700; }
   .zero .val { color: var(--faint); }
 </style>

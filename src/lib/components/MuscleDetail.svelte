@@ -1,12 +1,14 @@
 <script lang="ts">
   import type { MuscleGroup } from '$lib/data/anatomy';
+  import Icon from './Icon.svelte';
+  import { muscleIcon } from '$lib/icons';
 
   let { group }: { group: MuscleGroup } = $props();
 </script>
 
 <div class="detail">
   <header class="dh">
-    <span class="ic">{group.icon}</span>
+    <span class="ic"><Icon icon={muscleIcon(group.id)} size={26} /></span>
     <div>
       <h2 class="h2">{group.name}</h2>
       <span class="count">{group.muscles.length} muscles</span>
@@ -36,7 +38,7 @@
   .muscles { display: flex; flex-direction: column; gap: 8px; }
   .muscle { padding: 12px 13px; }
   .top { display: flex; align-items: center; gap: 9px; margin-bottom: 5px; }
-  .idx { width: 20px; height: 20px; border-radius: var(--pill); background: var(--red-soft); color: #ff6b76; font-size: 11px; font-weight: 800; display: grid; place-items: center; flex-shrink: 0; }
+  .idx { width: 20px; height: 20px; border-radius: var(--pill); background: var(--red-soft); color: var(--red-bright); font-size: 11px; font-weight: 800; display: grid; place-items: center; flex-shrink: 0; }
   .mn { font-weight: 700; font-size: 14px; }
   .what { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 0 0 7px; }
   .train { font-size: 12px; color: var(--text); }

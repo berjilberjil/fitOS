@@ -1,6 +1,9 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { TABS, isActive } from '$lib/nav';
+  import { currentUser, logout } from '$lib/stores/auth';
+  import Icon from './Icon.svelte';
+  import { navIcon } from '$lib/icons';
 </script>
 
 <aside class="sidebar">
@@ -13,13 +16,19 @@
     {#each TABS as t}
       <a href={t.href} class="link" class:on={isActive(t.href, $page.url.pathname)}>
         <span class="rail"></span>
-        <span class="ico">{t.icon}</span>
+        <span class="ico"><Icon icon={navIcon(t.href)} size={19} /></span>
         <span class="lbl">{t.label}</span>
       </a>
     {/each}
   </nav>
 
   <div class="foot">
+    {#if $currentUser}
+      <div class="acct">
+        <span class="who">{$currentUser.username}</span>
+        <button class="out" onclick={logout}>Log out</button>
+      </div>
+    {/if}
     <span class="eyebrow">Track · Plan · Build</span>
   </div>
 </aside>
@@ -55,5 +64,9 @@
   .link:hover .rail { height: 42%; }
   .link.on .rail { height: 62%; }
 
-  .foot { margin-top: auto; padding: 10px 12px; }
+  .foot { margin-top: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 12px; }
+  .acct { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .who { font-size: 13px; font-weight: 650; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .out { background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); border-radius: var(--pill); padding: 5px 11px; font-size: 11.5px; font-weight: 650; flex-shrink: 0; }
+  .out:hover { color: var(--text); }
 </style>
