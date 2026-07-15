@@ -8,10 +8,13 @@
   let selectedId = $state(muscleGroups[0].id);
 
   const selected = $derived(muscleGroups.find((g) => g.id === selectedId)!);
-  const activeRegion = $derived(selected.view === view ? selected.region : null);
+  const activeSlugs = $derived(selected.view === view ? selected.slugs : []);
+  const interactiveSlugs = $derived(
+    muscleGroups.filter((g) => g.view === view).flatMap((g) => g.slugs)
+  );
 
-  function pickRegion(region: string) {
-    const g = muscleGroups.find((x) => x.region === region && x.view === view);
+  function pickSlug(slug: string) {
+    const g = muscleGroups.find((x) => x.view === view && x.slugs.includes(slug));
     if (g) selectedId = g.id;
   }
   function pickGroup(id: string) {
@@ -45,8 +48,9 @@
 
 <div class="explore">
   <div class="bodycard card">
-    <BodyMap {view} active={activeRegion} onselect={pickRegion} />
+    <BodyMap {view} {activeSlugs} {interactiveSlugs} onselect={pickSlug} />
     <div class="viewhint muted">{view === 'front' ? 'Front view' : 'Back view'} · tap a muscle</div>
+    <div class="credit">Body model: react-native-body-highlighter · MIT</div>
   </div>
   <div class="detailwrap">
     <MuscleDetail group={selected} />
@@ -70,8 +74,9 @@
   .gi { font-size: 14px; }
 
   .explore { display: grid; grid-template-columns: 1fr; gap: 16px; }
-  .bodycard { padding: 18px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .bodycard { padding: 18px; display: flex; flex-direction: column; gap: 8px; align-items: center; }
   .viewhint { font-size: 11.5px; font-weight: 600; }
+  .credit { font-size: 9.5px; color: var(--faint); letter-spacing: 0.02em; }
   @media (min-width: 720px) {
     .explore { grid-template-columns: 300px 1fr; align-items: start; }
     .bodycard { position: sticky; top: 24px; }

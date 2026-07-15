@@ -12,8 +12,8 @@ export interface MuscleGroup {
   icon: string;
   /** Which body view this group reads best on. */
   view: 'front' | 'back';
-  /** Region id used to light up the SVG figure. */
-  region: string;
+  /** body-paths.ts muscle slugs that light up for this group. */
+  slugs: string[];
   blurb: string;
   muscles: Muscle[];
 }
@@ -25,7 +25,7 @@ export const muscleGroups: MuscleGroup[] = [
     name: 'Shoulders',
     icon: '🎯',
     view: 'front',
-    region: 'shoulders',
+    slugs: ['deltoids'],
     blurb: 'The deltoid caps each shoulder in three heads — hit all three for round, wide delts.',
     muscles: [
       { name: 'Anterior deltoid', what: 'Front head — raises the arm forward. Gets heavy work from all pressing.', train: 'Overhead press, front raise' },
@@ -38,7 +38,7 @@ export const muscleGroups: MuscleGroup[] = [
     name: 'Chest',
     icon: '🛡️',
     view: 'front',
-    region: 'chest',
+    slugs: ['chest'],
     blurb: 'The pectorals push. Angle changes which part does the work.',
     muscles: [
       { name: 'Upper chest (clavicular head)', what: 'Top slab of the pec. Built with incline angles — the part most lifters miss.', train: 'Incline bench / incline press' },
@@ -51,7 +51,7 @@ export const muscleGroups: MuscleGroup[] = [
     name: 'Back',
     icon: '🪃',
     view: 'back',
-    region: 'back',
+    slugs: ['trapezius', 'upper-back', 'lower-back'],
     blurb: 'The pulling engine. Width comes from lats, thickness from traps and rhomboids.',
     muscles: [
       { name: 'Latissimus dorsi', what: 'The big wing muscle — creates the V-taper and drives every pull-down and row.', train: 'Pull-up, lat pulldown' },
@@ -65,7 +65,7 @@ export const muscleGroups: MuscleGroup[] = [
     name: 'Biceps',
     icon: '💪',
     view: 'front',
-    region: 'biceps',
+    slugs: ['biceps'],
     blurb: 'Front of the upper arm — flexes the elbow and turns the forearm.',
     muscles: [
       { name: 'Long head', what: 'Outer bicep — builds the peak. Worked when the elbows sit behind the body.', train: 'Incline curl' },
@@ -78,7 +78,7 @@ export const muscleGroups: MuscleGroup[] = [
     name: 'Triceps',
     icon: '🔺',
     view: 'back',
-    region: 'triceps',
+    slugs: ['triceps'],
     blurb: 'Back of the upper arm — two-thirds of arm size. Three heads straighten the elbow.',
     muscles: [
       { name: 'Long head', what: 'Biggest head, runs down the inner arm — trained with overhead work.', train: 'Overhead extension' },
@@ -91,7 +91,7 @@ export const muscleGroups: MuscleGroup[] = [
     name: 'Forearms',
     icon: '🤝',
     view: 'front',
-    region: 'forearms',
+    slugs: ['forearm'],
     blurb: 'Grip and wrist strength — the base for every heavy pull.',
     muscles: [
       { name: 'Wrist flexors', what: 'Inner forearm — curls the wrist and locks your grip on the bar.', train: 'Wrist curl, dead hang' },
@@ -104,7 +104,7 @@ export const muscleGroups: MuscleGroup[] = [
     name: 'Core / Abs',
     icon: '🎽',
     view: 'front',
-    region: 'core',
+    slugs: ['abs', 'obliques'],
     blurb: 'The midsection braces every lift and shows the six-pack when body fat drops.',
     muscles: [
       { name: 'Rectus abdominis', what: 'The six-pack sheet — flexes the trunk. Visible when lean, not just when trained.', train: 'Crunch, leg raise' },
@@ -117,7 +117,7 @@ export const muscleGroups: MuscleGroup[] = [
     name: 'Glutes',
     icon: '🍑',
     view: 'back',
-    region: 'glutes',
+    slugs: ['gluteal'],
     blurb: 'The strongest muscle group — powers every hinge, jump and sprint.',
     muscles: [
       { name: 'Gluteus maximus', what: 'The big driver — extends the hip on squats, deadlifts and thrusts.', train: 'Hip thrust, squat' },
@@ -130,7 +130,7 @@ export const muscleGroups: MuscleGroup[] = [
     name: 'Quadriceps',
     icon: '🦵',
     view: 'front',
-    region: 'quads',
+    slugs: ['quadriceps'],
     blurb: 'Front of the thigh — four heads that straighten the knee.',
     muscles: [
       { name: 'Rectus femoris', what: 'Runs down the middle — the only quad that also lifts the hip.', train: 'Squat, leg extension' },
@@ -144,7 +144,7 @@ export const muscleGroups: MuscleGroup[] = [
     name: 'Hamstrings',
     icon: '🏃',
     view: 'back',
-    region: 'hamstrings',
+    slugs: ['hamstring'],
     blurb: 'Back of the thigh — bends the knee and extends the hip.',
     muscles: [
       { name: 'Biceps femoris', what: 'Outer hamstring — the part most involved in knee bending.', train: 'Leg curl, RDL' },
@@ -157,7 +157,7 @@ export const muscleGroups: MuscleGroup[] = [
     name: 'Calves',
     icon: '🦶',
     view: 'back',
-    region: 'calves',
+    slugs: ['calves'],
     blurb: 'Lower leg — points the toes and holds you on every step.',
     muscles: [
       { name: 'Gastrocnemius', what: 'The diamond-shaped bulge — trained with the leg straight.', train: 'Standing calf raise' },
