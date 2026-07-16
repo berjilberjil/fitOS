@@ -9,7 +9,7 @@
 <aside class="sidebar">
   <div class="brand">
     <span class="mark">◆</span>
-    <span class="word">Luxi<span class="fit">Fit</span></span>
+    <span class="word">fit<span class="fit">OS</span></span>
   </div>
 
   <nav class="links">

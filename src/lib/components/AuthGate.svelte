@@ -20,7 +20,7 @@
 
 <div class="authwrap">
   <div class="card authcard rise">
-    <div class="brand"><span class="mark">◆</span> Luxi<span class="fit">Fit</span></div>
+    <div class="brand"><span class="mark">◆</span> fit<span class="fit">OS</span></div>
     <h1 class="h1">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1>
     <p class="muted sub">
       {mode === 'login' ? 'Log in to your food & workout log.' : 'Pick a username — your data syncs to the server.'}

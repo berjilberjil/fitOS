@@ -8,10 +8,17 @@ import { writable, type Writable } from 'svelte/store';
 const registry = new Map<string, Writable<any>>();
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 let hydrated = false;
+let serverState: Record<string, unknown> = {}; // cached server copy, so late-registered stores can seed from it
 
 export function synced<T>(key: string, initial: T): Writable<T> {
   const store = writable<T>(initial);
   registry.set(key, store as Writable<any>);
+  // If we already hydrated before this store registered (e.g. a tab opened
+  // after login), seed it from the cached server copy BEFORE we subscribe —
+  // otherwise it would push its empty default and clobber real server data.
+  if (hydrated && key in serverState) {
+    store.set(serverState[key] as T);
+  }
   let first = true;
   store.subscribe((value) => {
     if (first) {
@@ -45,16 +52,20 @@ function schedulePush(key: string, value: unknown): void {
 /** Load every registered store's value from the server (after login). */
 export async function hydrateFromServer(): Promise<void> {
   const res = await fetch('/api/state');
-  if (!res.ok) return;
-  const data = (await res.json()) as Record<string, unknown>;
-  for (const [key, store] of registry) {
-    if (key in data) store.set(data[key]);
+  if (!res.ok) {
+    hydrated = true; // allow local use even if the fetch failed
+    return;
   }
-  hydrated = true;
+  serverState = (await res.json()) as Record<string, unknown>;
+  for (const [key, store] of registry) {
+    if (key in serverState) store.set(serverState[key]);
+  }
+  hydrated = true; // set AFTER seeding so the seeding sets above don't push
 }
 
 export function resetHydration(): void {
   hydrated = false;
+  serverState = {};
 }
 
 // Drop-in name so store files can keep calling `persisted(key, initial)`.

@@ -16,7 +16,7 @@
 {#if !$profile.onboarded}
   <div class="onboard rise">
     <span class="eyebrow">Welcome</span>
-    <h1 class="h1 title">Set up LuxiFit</h1>
+    <h1 class="h1 title">Set up fitOS</h1>
     <p class="muted lead">A quick profile powers your BMI, calorie and protein targets.</p>
     <div class="card obcard">
       <ProfileForm initial={DEFAULT_PROFILE} onsave={(p) => saveProfile(p)} />

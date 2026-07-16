@@ -23,7 +23,7 @@
     <SideNav />
     <main class="main">
       <header class="mobilebar">
-        <span class="mb-brand">Luxi<span class="fit">Fit</span></span>
+        <span class="mb-brand">fit<span class="fit">OS</span></span>
         <button class="mb-out" onclick={logout}>{$currentUser.username} · Log out</button>
       </header>
       <div class="content">
@@ -45,8 +45,12 @@
 
   .mobilebar {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px calc(12px + env(safe-area-inset-top));
+    /* safe-area MUST be on the TOP so the header clears the status bar / notch */
+    padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
     border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 30;
+    background: color-mix(in oklab, var(--bg) 82%, transparent);
+    backdrop-filter: blur(12px);
   }
   .mb-brand { font-weight: 750; letter-spacing: -0.03em; font-size: 16px; }
   .mb-brand .fit { color: var(--red); }
