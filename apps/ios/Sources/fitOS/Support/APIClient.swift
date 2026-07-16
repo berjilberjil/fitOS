@@ -76,7 +76,7 @@ final class APIClient {
         try await get("api/me", as: AuthUser.self)
     }
 
-    func logout() async throws {
+    func logout() async {
         _ = try? await request("POST", "api/auth/logout")
     }
 

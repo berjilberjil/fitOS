@@ -1,45 +1,59 @@
 import SwiftUI
 
+/// Food tab: Log (browse + add to today) / weekly meal Plan.
 struct FoodView: View {
+    @State private var tab = 0
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 10) {
+                Picker("", selection: $tab) {
+                    Text("Log").tag(0)
+                    Text("Plan").tag(1)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+
+                if tab == 0 { FoodCatalog() } else { MealPlanView() }
+            }
+            .background(Palette.bg)
+            .navigationTitle("Food")
+            .toolbarColorScheme(.dark, for: .navigationBar)
+        }
+    }
+}
+
+/// Browse/search the catalog and log a food to today.
+struct FoodCatalog: View {
     @EnvironmentObject var state: AppState
     @State private var search = ""
     @State private var selected: Food?
 
-    private var filtered: [Food] {
-        let q = search.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !q.isEmpty else { return state.allFoods }
-        return state.allFoods.filter { $0.name.lowercased().contains(q) }
-    }
-
     private var grouped: [(String, [Food])] {
-        Dictionary(grouping: filtered, by: \.category)
+        let q = search.trimmingCharacters(in: .whitespaces).lowercased()
+        let list = q.isEmpty ? state.allFoods : state.allFoods.filter { $0.name.lowercased().contains(q) }
+        return Dictionary(grouping: list, by: \.category)
             .map { ($0.key, $0.value.sorted { $0.name < $1.name }) }
             .sorted { $0.0 < $1.0 }
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                ForEach(grouped, id: \.0) { category, foods in
-                    Section {
-                        ForEach(foods) { food in
-                            Button { selected = food } label: { row(food) }
-                                .listRowBackground(Palette.surface)
-                        }
-                    } header: {
-                        Text(category).eyebrow()
+        List {
+            ForEach(grouped, id: \.0) { category, foods in
+                Section {
+                    ForEach(foods) { food in
+                        Button { selected = food } label: { row(food) }
+                            .listRowBackground(Palette.surface)
                     }
-                }
+                } header: { Text(category).eyebrow() }
             }
-            .scrollContentBackground(.hidden)
-            .background(Palette.bg)
-            .navigationTitle("Food")
-            .searchable(text: $search, prompt: "Search foods")
-            .toolbarColorScheme(.dark, for: .navigationBar)
         }
+        .scrollContentBackground(.hidden)
+        .background(Palette.bg)
+        .searchable(text: $search, prompt: "Search foods")
         .sheet(item: $selected) { food in
-            LogFoodSheet(food: food)
-                .presentationDetents([.medium])
+            LogFoodSheet(food: food).presentationDetents([.medium])
         }
     }
 
@@ -52,15 +66,13 @@ struct FoodView: View {
                     .font(.system(size: 12)).foregroundStyle(Palette.faint)
             }
             Spacer()
-            if f.isJunk {
-                Text("junk").font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(Palette.warn)
-            }
+            if f.isJunk { Text("junk").font(.system(size: 10, weight: .bold)).foregroundStyle(Palette.warn) }
         }
         .padding(.vertical, 2)
     }
 }
 
+/// Sheet: choose meal + servings, then log to today's food log.
 struct LogFoodSheet: View {
     @EnvironmentObject var state: AppState
     @Environment(\.dismiss) var dismiss
@@ -89,8 +101,7 @@ struct LogFoodSheet: View {
                 Spacer()
                 Stepper(value: $quantity, in: 0.5...20, step: 0.5) {
                     Text(quantity == quantity.rounded() ? String(Int(quantity)) : String(format: "%.1f", quantity))
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Palette.text)
+                        .font(.system(size: 17, weight: .semibold, design: .rounded)).foregroundStyle(Palette.text)
                 }
             }
 

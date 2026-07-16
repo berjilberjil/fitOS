@@ -58,11 +58,53 @@ struct PlanItem: Codable, Equatable {
 }
 
 /// What was actually eaten on a date, grouped by meal key.
-/// meals: Record<MealKey, PlanItem[]>  →  [String: [PlanItem]]
 struct DayLog: Codable, Equatable {
     var date: String
     var meals: [String: [PlanItem]]
 }
+
+// ---------------- Workout ----------------
+
+struct PlanExercise: Codable, Equatable {
+    var exerciseId: String
+    var sets: Int
+    var reps: Int
+}
+
+/// A weekday's planned routine.
+struct WorkoutDayPlan: Codable, Equatable {
+    var rest: Bool
+    var items: [PlanExercise]
+    static let empty = WorkoutDayPlan(rest: false, items: [])
+}
+
+/// What was actually trained on a date — carries working weight for overload.
+struct LoggedExercise: Codable, Equatable {
+    var exerciseId: String
+    var sets: Int
+    var reps: Int
+    var weightKg: Double
+    var done: Bool
+}
+
+struct WorkoutDayLog: Codable, Equatable {
+    var date: String
+    var rest: Bool
+    var items: [LoggedExercise]
+}
+
+/// Weekly routines are Record<weekday(0-6), …> → JSON object with string keys.
+typealias WorkoutWeekPlan = [String: WorkoutDayPlan]
+typealias MealMap = [String: [PlanItem]]
+typealias WeekPlan = [String: MealMap]
+
+enum WorkoutDefaults {
+    static let sets = 3
+    static let reps = 10
+    static let weightStep = 0.5
+}
+
+// ---------------- Meals ----------------
 
 enum MealKey: String, CaseIterable, Identifiable {
     case breakfast, lunch, dinner, snacks
@@ -70,21 +112,29 @@ enum MealKey: String, CaseIterable, Identifiable {
     var label: String { rawValue.capitalized }
     var icon: String {
         switch self {
-        case .breakfast: return "☀️"
-        case .lunch: return "🍽️"
+        case .breakfast: return "🌅"
+        case .lunch: return "☀️"
         case .dinner: return "🌙"
-        case .snacks: return "🍎"
+        case .snacks: return "🍿"
         }
     }
 }
 
-/// The whole /api/state payload, decoded by luxifit.* keys.
+let WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+let WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+// ---------------- API payloads ----------------
+
+/// The whole /api/state payload, decoded by luxifit.* keys (data contract).
 struct AppStatePayload: Decodable {
     var profile: Profile?
     var log: [String: DayLog]?
     var weightlog: [String: Double]?
     var foods: [Food]?
     var exercises: [Exercise]?
+    var workoutplan: WorkoutWeekPlan?
+    var workoutlog: [String: WorkoutDayLog]?
+    var weekplan: WeekPlan?
 
     enum CodingKeys: String, CodingKey {
         case profile = "luxifit.profile"
@@ -92,6 +142,9 @@ struct AppStatePayload: Decodable {
         case weightlog = "luxifit.weightlog"
         case foods = "luxifit.foods"
         case exercises = "luxifit.exercises"
+        case workoutplan = "luxifit.workoutplan"
+        case workoutlog = "luxifit.workoutlog"
+        case weekplan = "luxifit.weekplan"
     }
 }
 
