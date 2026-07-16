@@ -20,7 +20,7 @@
 
 <div class="authwrap">
   <div class="card authcard rise">
-    <div class="brand"><span class="mark">◆</span> fit<span class="fit">OS</span></div>
+    <div class="brand"><img class="logo" src="/logo.png" alt="" /> <span class="word">fit<span class="fit">OS</span></span></div>
     <h1 class="h1">{mode === 'login' ? 'Welcome back' : 'Create your account'}</h1>
     <p class="muted sub">
       {mode === 'login' ? 'Log in to your food & workout log.' : 'Pick a username — your data syncs to the server.'}
@@ -50,8 +50,9 @@
 <style>
   .authwrap { min-height: 100dvh; display: grid; place-items: center; padding: 22px; }
   .authcard { width: 100%; max-width: 380px; padding: 26px 24px; display: flex; flex-direction: column; gap: 6px; }
-  .brand { font-weight: 750; letter-spacing: -0.03em; font-size: 18px; margin-bottom: 10px; }
-  .brand .mark { color: var(--red); }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .brand .logo { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+  .brand .word { font-weight: 750; letter-spacing: -0.03em; font-size: 20px; }
   .brand .fit { color: var(--red); }
   .sub { font-size: 13px; margin: 2px 0 18px; }
   form { display: flex; flex-direction: column; gap: 10px; }

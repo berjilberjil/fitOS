@@ -8,7 +8,7 @@
 
 <aside class="sidebar">
   <div class="brand">
-    <span class="mark">◆</span>
+    <img class="logo" src="/logo.png" alt="" />
     <span class="word">fit<span class="fit">OS</span></span>
   </div>
 
@@ -41,7 +41,7 @@
     background: color-mix(in oklab, var(--surface) 55%, var(--bg));
   }
   .brand { display: flex; align-items: center; gap: 9px; padding: 6px 10px 20px; }
-  .mark { color: var(--red); font-size: 15px; }
+  .logo { width: 26px; height: 26px; object-fit: contain; }
   .word { font-weight: 750; letter-spacing: -0.03em; font-size: 18px; }
   .word .fit { color: var(--red); }
 

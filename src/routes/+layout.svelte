@@ -23,7 +23,7 @@
     <SideNav />
     <main class="main">
       <header class="mobilebar">
-        <span class="mb-brand">fit<span class="fit">OS</span></span>
+        <span class="mb-brand"><img class="mb-logo" src="/logo.png" alt="" /> fit<span class="fit">OS</span></span>
         <button class="mb-out" onclick={logout}>{$currentUser.username} · Log out</button>
       </header>
       <div class="content">
@@ -52,7 +52,8 @@
     background: color-mix(in oklab, var(--bg) 82%, transparent);
     backdrop-filter: blur(12px);
   }
-  .mb-brand { font-weight: 750; letter-spacing: -0.03em; font-size: 16px; }
+  .mb-brand { display: inline-flex; align-items: center; gap: 7px; font-weight: 750; letter-spacing: -0.03em; font-size: 16px; }
+  .mb-brand .mb-logo { width: 22px; height: 22px; object-fit: contain; }
   .mb-brand .fit { color: var(--red); }
   .mb-out {
     background: var(--surface-2); border: 1px solid var(--border); color: var(--muted);
