@@ -1,4 +1,4 @@
--- LuxiFit backend schema (Postgres)
+-- fitOS backend schema (Postgres)
 
 create table if not exists users (
   id            serial primary key,

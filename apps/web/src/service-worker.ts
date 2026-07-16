@@ -4,7 +4,7 @@ import { build, files, version } from '$service-worker';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
 
-const CACHE = `luxifit-${version}`;
+const CACHE = `fitos-${version}`;
 const ASSETS = [...build, ...files];
 
 sw.addEventListener('install', (event) => {

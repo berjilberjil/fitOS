@@ -1,9 +1,24 @@
-node_modules
-.svelte-kit
-build
-dist
 .DS_Store
-.env
 
-# Netlify build output
+# Netlify link/build state
 .netlify/
+
+# --- Web app (apps/web) ---
+apps/web/node_modules
+apps/web/.svelte-kit
+apps/web/build
+apps/web/dist
+apps/web/.env
+apps/web/.netlify/
+
+# --- Legacy Tauri shell (being replaced by native apps/ios) ---
+apps/web/src-tauri/target
+apps/web/src-tauri/gen
+
+# --- Native iOS app (apps/ios) ---
+apps/ios/fitOS.xcodeproj
+apps/ios/build
+apps/ios/DerivedData
+apps/ios/.build
+apps/ios/*.xcworkspace
+apps/ios/Pods

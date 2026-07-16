@@ -1,4 +1,7 @@
 [build]
+  # Monorepo: build the web app from apps/web. `base` makes command/publish
+  # relative to that directory, so the native iOS app in apps/ios is ignored.
+  base = "apps/web"
   command = "npm run build"
   publish = "build"
 

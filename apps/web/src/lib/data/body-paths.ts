@@ -1,4 +1,4 @@
-// LuxiFit anatomy — muscle + body-outline SVG paths.
+// fitOS anatomy — muscle + body-outline SVG paths.
 // Ported from react-native-body-highlighter by HichamELBSI — MIT License.
 // https://github.com/HichamELBSI/react-native-body-highlighter
 // Male model. Front and back live in one 1448-wide space (back is x-offset +724),

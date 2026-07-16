@@ -1,7 +1,7 @@
 import postgres from 'postgres';
 import { env } from '$env/dynamic/private';
 
-const url = env.DATABASE_URL ?? 'postgresql://localhost:5432/luxifit';
+const url = env.DATABASE_URL ?? 'postgresql://localhost:5432/fitos';
 const isSupabase = url.includes('supabase') || url.includes('pooler');
 
 // Single shared Postgres connection pool for the whole server.

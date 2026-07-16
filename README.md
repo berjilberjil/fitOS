@@ -1,27 +1,34 @@
-# fitOS
+# fitOS — monorepo
 
-A personal fitness operating system — food logging (with AI voice), workout planning with progressive overload, an interactive anatomy map, and a progress dashboard.
+One product, two front-ends on a shared backend.
 
-## Features
+```
+apps/
+  web/    SvelteKit web app + the API/server (Supabase Postgres).
+          This is the backend for BOTH front-ends. Deploys to Netlify
+          at fit.berjiljacob.com.
+  ios/    Native SwiftUI app. Talks to apps/web's /api/* — same accounts,
+          same data. No backend duplicated; only the UI is native.
+```
 
-- **Food** — Tamil-Nadu food database with real photos, macro tracking, meal-based daily logging, junk options, and **AI voice logging** (say *"3 chapati and 100ml milk for breakfast"* → it's logged).
-- **Workout** — 90+ exercises across chest / back / shoulders / arms / legs / core / cardio / boxing, animated demos, weekly plans, rest days, and **progressive-overload** weight tracking (last vs this session).
-- **Anatomy** — an accurate body map; tap any muscle to see the exercises that build it, **ranked by activation %**.
-- **Progress** — weight trend, BMI, estimated body-fat %, a **six-pack timeline**, and smart cut / bulk / recomp suggestions.
-- **Accounts** — multi-user, data synced to a Postgres backend.
+The old Tauri iOS shell lives at `apps/web/src-tauri` and is being replaced by the
+native app in `apps/ios`.
 
-## Stack
-
-SvelteKit 2 · Svelte 5 (runes) · Postgres · Node (`adapter-node`) · Google Gemini (voice parsing, server-side) · Iconify.
-
-## Run
+## Common commands (from repo root)
 
 ```bash
-npm install
-# create .env with:
-#   DATABASE_URL=postgresql://<user>@localhost:5432/luxifit
-#   GEMINI_API_KEY=...            (for voice logging)
-#   GEMINI_MODEL=gemini-3.1-flash-lite
-psql -d luxifit -f db/schema.sql   # once
-npm run dev                        # or: npm run build && node build
+npm run web          # dev server for the web app + API
+npm run web:build    # production build (what Netlify runs)
+npm run ios:gen      # generate the Xcode project (needs xcodegen)
+npm run ios:open     # open it in Xcode
+```
+
+## Why a plain monorepo (not Turborepo)
+
+Turbo orchestrates JS/TS build graphs — it can't build an Xcode target, so it adds
+config for no gain here. `apps/web` is self-contained (its own `package.json` +
+lockfile); `apps/ios` builds via Xcode. Netlify builds from `apps/web` via the
+`base` setting in `netlify.toml`.
+
+See `apps/ios/README.md` for iOS build steps and the remaining-work checklist.
 ```
