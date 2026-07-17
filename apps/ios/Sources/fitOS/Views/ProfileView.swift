@@ -11,6 +11,7 @@ struct ProfileView: View {
     @State private var target = 65.0
     @State private var activity = 1.375
     @State private var saved = false
+    @State private var faceIDLock = BiometricLock.isEnabled
 
     private let activities: [(String, Double)] = [
         ("Sedentary", 1.2), ("Light", 1.375), ("Moderate", 1.55),
@@ -41,6 +42,22 @@ struct ProfileView: View {
                     row("Maintenance", "\(Int(Nutrition.tdee(preview).rounded())) kcal")
                     row("Goal calories", "\(Int(Nutrition.calorieTarget(preview).rounded())) kcal")
                     row("Protein", "\(Int(Nutrition.macroTargets(preview).protein)) g")
+                }
+                if BiometricLock.isAvailable {
+                    Section("Security") {
+                        Toggle("Require \(BiometricLock.biometryName)", isOn: $faceIDLock)
+                            .tint(Palette.red)
+                            .onChange(of: faceIDLock) { on in
+                                if on {
+                                    Task {
+                                        let ok = await BiometricLock.authenticate(reason: "Enable \(BiometricLock.biometryName) lock")
+                                        if ok { BiometricLock.isEnabled = true; Haptics.success() } else { faceIDLock = false }
+                                    }
+                                } else {
+                                    BiometricLock.isEnabled = false
+                                }
+                            }
+                    }
                 }
                 Section {
                     Button {

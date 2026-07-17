@@ -31,6 +31,7 @@ struct FoodCatalog: View {
     @State private var selected: Food?
     @State private var editingFood: Food?
     @State private var newFood = false
+    @State private var showVoice = false
 
     private var grouped: [(String, [Food])] {
         let q = search.trimmingCharacters(in: .whitespaces).lowercased()
@@ -59,6 +60,11 @@ struct FoodCatalog: View {
         .background(Palette.bg)
         .searchable(text: $search, prompt: "Search foods")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { Haptics.tap(); showVoice = true } label: {
+                    Image(systemName: "mic.fill")
+                }.tint(Palette.red)
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button { newFood = true } label: { Image(systemName: "plus") }.tint(Palette.red)
             }
@@ -68,6 +74,7 @@ struct FoodCatalog: View {
         }
         .sheet(item: $editingFood) { FoodEditorSheet(editing: $0) }
         .sheet(isPresented: $newFood) { FoodEditorSheet(editing: nil) }
+        .sheet(isPresented: $showVoice) { VoiceLogSheet() }
     }
 
     private func row(_ f: Food) -> some View {
@@ -126,6 +133,7 @@ struct LogFoodSheet: View {
 
             PrimaryButton(title: "Add to \(meal.label)") {
                 state.logFood(meal: meal, foodId: food.id, quantity: quantity)
+                Haptics.success()
                 dismiss()
             }
             Spacer()

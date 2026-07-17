@@ -206,3 +206,30 @@ struct AnatomyData: Decodable {
     var groups: [MuscleGroup]
     var activation: [String: [Activation]]
 }
+
+// ---------------- Voice logging ----------------
+
+struct FoodLite: Encodable {
+    let id: String
+    let name: String
+    let serving: String
+}
+
+struct VoiceParseRequest: Encodable {
+    let transcript: String
+    let foods: [FoodLite]
+    let plannedFoodIds: [String]
+}
+
+struct ParsedItem: Decodable, Identifiable {
+    let spoken: String
+    let foodId: String?
+    let foodName: String
+    let quantity: Double
+    var id: String { spoken + "|" + foodName }
+}
+
+struct ParsedFoodLog: Decodable {
+    let meal: String?
+    let items: [ParsedItem]
+}

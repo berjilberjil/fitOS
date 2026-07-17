@@ -76,7 +76,7 @@ struct WorkoutSessionView: View {
                     }
                     .buttonStyle(.plain)
                     Spacer()
-                    Button { state.toggleDone(index: idx) } label: {
+                    Button { Haptics.tap(); state.toggleDone(index: idx) } label: {
                         Image(systemName: item.done ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 24))
                             .foregroundStyle(item.done ? Palette.ok : Palette.faint)

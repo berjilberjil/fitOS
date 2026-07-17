@@ -90,6 +90,11 @@ final class APIClient {
         try await get("api/anatomy", as: AnatomyData.self)
     }
 
+    func parseVoice(_ req: VoiceParseRequest) async throws -> ParsedFoodLog {
+        let data = try await request("POST", "api/voice/parse", body: req)
+        return try decoder.decode(ParsedFoodLog.self, from: data)
+    }
+
     func state() async throws -> AppStatePayload {
         try await get("api/state", as: AppStatePayload.self)
     }

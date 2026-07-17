@@ -142,6 +142,19 @@ final class AppState: ObservableObject {
         anatomy = try? await api.anatomy()
     }
 
+    // MARK: - Voice logging
+
+    func plannedTodayFoodIds() -> [String] {
+        let day = mealPlanDay(todayWeekday)
+        return MealKey.allCases.flatMap { day[$0.rawValue] ?? [] }.map(\.foodId)
+    }
+
+    func parseVoice(transcript: String) async -> ParsedFoodLog? {
+        let lites = allFoods.map { FoodLite(id: $0.id, name: $0.name, serving: $0.servingLabel) }
+        let req = VoiceParseRequest(transcript: transcript, foods: lites, plannedFoodIds: plannedTodayFoodIds())
+        return try? await api.parseVoice(req)
+    }
+
     // MARK: - Profile / weight
 
     func saveProfile(_ p: Profile) {
