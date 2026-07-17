@@ -46,36 +46,22 @@ struct ExerciseCatalog: View {
             .sorted { $0.0 < $1.0 }
     }
 
+    private let cols = [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+
     var body: some View {
-        List {
-            ForEach(grouped, id: \.0) { category, exercises in
-                Section {
-                    ForEach(exercises) { ex in
-                        Button { detail = ex } label: {
-                            HStack(spacing: 12) {
-                                Text(ex.icon).font(.system(size: 22))
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(ex.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Palette.text)
-                                    Text("\(ex.equipment) · \(ex.primary)").font(.system(size: 12)).foregroundStyle(Palette.faint)
-                                }
-                                Spacer()
-                                if !ex.weighted {
-                                    Text("bodyweight").font(.system(size: 10, weight: .bold)).foregroundStyle(Palette.ok)
-                                }
-                                Image(systemName: "play.circle").font(.system(size: 16)).foregroundStyle(Palette.faint)
-                            }
-                            .padding(.vertical, 2)
-                        }
-                        .listRowBackground(Palette.surface)
-                        .contextMenu {
-                            Button { detail = ex } label: { Label("View demo", systemImage: "play") }
-                            Button { editingEx = ex } label: { Label("Edit exercise", systemImage: "pencil") }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 18) {
+                ForEach(grouped, id: \.0) { category, exercises in
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(category).eyebrow()
+                        LazyVGrid(columns: cols, spacing: 12) {
+                            ForEach(exercises) { ex in card(ex) }
                         }
                     }
-                } header: { Text(category).eyebrow() }
+                }
             }
+            .padding(16)
         }
-        .scrollContentBackground(.hidden)
         .background(Palette.bg)
         .searchable(text: $search, prompt: "Search exercises")
         .toolbar {
@@ -88,5 +74,27 @@ struct ExerciseCatalog: View {
         }
         .sheet(item: $editingEx) { ExerciseEditorSheet(editing: $0) }
         .sheet(isPresented: $newEx) { ExerciseEditorSheet(editing: nil) }
+    }
+
+    private func card(_ ex: Exercise) -> some View {
+        Button { detail = ex } label: {
+            VStack(alignment: .leading, spacing: 0) {
+                ExerciseThumb(still: state.mediaFor(ex.id)?.still, emoji: ex.icon)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(ex.name).font(.system(size: 13, weight: .semibold)).foregroundStyle(Palette.text).lineLimit(1)
+                    Text(ex.primary).font(.system(size: 11)).foregroundStyle(Palette.faint).lineLimit(1)
+                }
+                .padding(.horizontal, 10).padding(.vertical, 9)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(Palette.surface)
+            .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Radius.md, style: .continuous).stroke(Palette.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button { detail = ex } label: { Label("View demo", systemImage: "play") }
+            Button { editingEx = ex } label: { Label("Edit exercise", systemImage: "pencil") }
+        }
     }
 }

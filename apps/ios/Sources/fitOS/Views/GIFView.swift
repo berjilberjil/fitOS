@@ -28,6 +28,9 @@ enum GIFDecoder {
     }
 }
 
+/// In-memory cache of decoded animated gifs, keyed by URL — re-opening is instant.
+enum GifMemo { static let cache = NSCache<NSString, UIImage>() }
+
 /// UIImageView wrapper — auto-animates a UIImage that carries `.images`.
 struct AnimatedImageView: UIViewRepresentable {
     let image: UIImage?
@@ -43,31 +46,30 @@ struct AnimatedImageView: UIViewRepresentable {
     }
 }
 
-/// Loads and shows an exercise demo: animated gif → still image → emoji fallback.
+/// Exercise demo: shows the still photo instantly, then swaps in the animated gif.
+/// Cached gifs appear with zero delay on re-open.
 struct ExerciseDemoView: View {
     let media: ExerciseMedia?
     let emoji: String
 
-    @State private var image: UIImage?
-    @State private var loading = false
+    @State private var gifImage: UIImage?
+    @State private var stillImage: UIImage?
     @State private var failed = false
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: Radius.md, style: .continuous).fill(Palette.surface2)
-            if let image {
-                AnimatedImageView(image: image).padding(6)
-            } else if loading {
+            if let img = gifImage ?? stillImage {
+                AnimatedImageView(image: img).padding(6)
+            } else if !failed {
                 ProgressView().tint(Palette.red)
             } else {
                 VStack(spacing: 6) {
                     Text(emoji).font(.system(size: 54))
-                    if failed {
-                        Text("Demo not available").font(.system(size: 12)).foregroundStyle(Palette.faint)
-                    }
+                    Text("Demo not available").font(.system(size: 12)).foregroundStyle(Palette.faint)
                 }
             }
-            if image?.images != nil {
+            if gifImage?.images != nil {
                 VStack {
                     HStack {
                         Spacer()
@@ -85,20 +87,49 @@ struct ExerciseDemoView: View {
     }
 
     private func load() async {
-        image = nil; failed = false
-        guard let urlStr = media?.gif ?? media?.still, let url = URL(string: urlStr) else {
-            failed = true; return
+        gifImage = nil; stillImage = nil; failed = false
+
+        // 1. Cached decoded gif → instant.
+        if let gif = media?.gif, let cached = GifMemo.cache.object(forKey: gif as NSString) {
+            gifImage = cached; return
         }
-        loading = true
-        defer { loading = false }
-        if let (data, _) = try? await URLSession.shared.data(from: url) {
-            image = (media?.gif != nil) ? GIFDecoder.animatedImage(from: data) : UIImage(data: data)
-        }
-        // Gif failed? try the still.
-        if image == nil, let still = media?.still, let url = URL(string: still),
+        // 2. Show the still immediately (usually already URLCached from the grid).
+        if let still = media?.still, let url = URL(string: still),
            let (d, _) = try? await URLSession.shared.data(from: url) {
-            image = UIImage(data: d)
+            stillImage = UIImage(data: d)
         }
-        if image == nil { failed = true }
+        // 3. Download + decode + cache the animated gif, then swap it in.
+        if let gif = media?.gif, let url = URL(string: gif),
+           let (d, _) = try? await URLSession.shared.data(from: url),
+           let anim = GIFDecoder.animatedImage(from: d) {
+            GifMemo.cache.setObject(anim, forKey: gif as NSString)
+            gifImage = anim
+            return
+        }
+        if gifImage == nil && stillImage == nil { failed = true }
+    }
+}
+
+/// Still-photo thumbnail for the browse grid (emoji fallback).
+struct ExerciseThumb: View {
+    let still: String?
+    let emoji: String
+    var body: some View {
+        ZStack {
+            Palette.surface2
+            if let s = still, let url = URL(string: s) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let img): img.resizable().scaledToFill()
+                    case .empty: ProgressView().tint(Palette.faint)
+                    default: Text(emoji).font(.system(size: 34))
+                    }
+                }
+            } else {
+                Text(emoji).font(.system(size: 34))
+            }
+        }
+        .frame(height: 104)
+        .clipped()
     }
 }
