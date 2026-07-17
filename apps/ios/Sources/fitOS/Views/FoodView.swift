@@ -6,25 +6,42 @@ struct FoodView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 10) {
+            VStack(spacing: 0) {
                 Picker("", selection: $tab) {
                     Text("Log").tag(0)
                     Text("Plan").tag(1)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 16)
-                .padding(.top, 6)
+                .padding(.top, 8)
+                .padding(.bottom, 10)
 
-                if tab == 0 { FoodCatalog() } else { MealPlanView() }
+                // Keep both segments mounted so Log ↔ Plan doesn't jump.
+                ZStack(alignment: .top) {
+                    FoodCatalog()
+                        .opacity(tab == 0 ? 1 : 0)
+                        .allowsHitTesting(tab == 0)
+                        .accessibilityHidden(tab != 0)
+                    MealPlanView()
+                        .opacity(tab == 1 ? 1 : 0)
+                        .allowsHitTesting(tab == 1)
+                        .accessibilityHidden(tab != 1)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .clipped()
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Palette.bg)
             .navigationTitle("Food")
             .toolbarColorScheme(.dark, for: .navigationBar)
+            .accessibilityIdentifier("screen.food")
         }
+        .transaction { $0.animation = nil }
     }
 }
 
 /// Browse/search the catalog and log a food to today.
+/// Inline search (not `.searchable`) so segment switches don't thrash the nav bar.
 struct FoodCatalog: View {
     @EnvironmentObject var state: AppState
     @State private var search = ""
@@ -43,6 +60,31 @@ struct FoodCatalog: View {
 
     var body: some View {
         List {
+            Section {
+                HStack(spacing: 10) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(Palette.faint)
+                    TextField("Search foods", text: $search)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .foregroundStyle(Palette.text)
+                    if !search.isEmpty {
+                        Button { search = "" } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(Palette.faint)
+                        }
+                    }
+                    Button { Haptics.tap(); showVoice = true } label: {
+                        Image(systemName: "mic.fill").foregroundStyle(Palette.red)
+                    }
+                    Button { newFood = true } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(Palette.red)
+                    }
+                }
+                .listRowBackground(Palette.surface2)
+                .listRowInsets(EdgeInsets(top: 8, leading: 14, bottom: 8, trailing: 14))
+            }
+
             ForEach(grouped, id: \.0) { category, foods in
                 Section {
                     ForEach(foods) { food in
@@ -58,23 +100,13 @@ struct FoodCatalog: View {
         }
         .scrollContentBackground(.hidden)
         .background(Palette.bg)
-        .searchable(text: $search, prompt: "Search foods")
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button { Haptics.tap(); showVoice = true } label: {
-                    Image(systemName: "mic.fill")
-                }.tint(Palette.red)
-            }
-            ToolbarItem(placement: .primaryAction) {
-                Button { newFood = true } label: { Image(systemName: "plus") }.tint(Palette.red)
-            }
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(item: $selected) { food in
             LogFoodSheet(food: food).presentationDetents([.medium])
         }
         .sheet(item: $editingFood) { FoodEditorSheet(editing: $0) }
         .sheet(isPresented: $newFood) { FoodEditorSheet(editing: nil) }
-        .sheet(isPresented: $showVoice) { VoiceLogSheet() }
+        .sheet(isPresented: $showVoice) { UnifiedVoiceLogSheet() }
     }
 
     private func row(_ f: Food) -> some View {
@@ -98,48 +130,75 @@ struct LogFoodSheet: View {
     @Environment(\.dismiss) var dismiss
     let food: Food
 
-    @State private var meal: MealKey = .breakfast
+    @State private var meal: MealKey = LogFoodSheet.guessMeal()
     @State private var quantity: Double = 1
 
+    /// Time-of-day default meal (same idea as voice log).
+    static func guessMeal() -> MealKey {
+        let h = Calendar.current.component(.hour, from: Date())
+        if h < 11 { return .breakfast }
+        if h < 16 { return .lunch }
+        if h < 21 { return .dinner }
+        return .snacks
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack(spacing: 12) {
-                Text(food.icon).font(.system(size: 34))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(food.name).font(.system(size: 20, weight: .bold)).foregroundStyle(Palette.text)
-                    Text(food.servingLabel).font(.system(size: 13)).foregroundStyle(Palette.muted)
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(spacing: 12) {
+                    Text(food.icon).font(.system(size: 34))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(food.name)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundStyle(Palette.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(food.servingLabel).font(.system(size: 13)).foregroundStyle(Palette.muted)
+                    }
+                    Spacer(minLength: 0)
                 }
-            }
 
-            Picker("Meal", selection: $meal) {
-                ForEach(MealKey.allCases) { m in Text(m.label).tag(m) }
-            }
-            .pickerStyle(.segmented)
+                Picker("Meal", selection: $meal) {
+                    ForEach(MealKey.allCases) { m in Text(m.label).tag(m) }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("logFood.meal")
 
-            HStack {
-                Text("Servings").font(.system(size: 15)).foregroundStyle(Palette.muted)
+                HStack {
+                    Text("Servings").font(.system(size: 15)).foregroundStyle(Palette.muted)
+                    Spacer()
+                    Stepper(value: $quantity, in: 0.5...20, step: 0.5) {
+                        Text(quantity == quantity.rounded() ? String(Int(quantity)) : String(format: "%.1f", quantity))
+                            .font(.system(size: 17, weight: .semibold, design: .rounded)).foregroundStyle(Palette.text)
+                    }
+                    .accessibilityIdentifier("logFood.servings")
+                }
+
+                Text("\(Int((food.perServing.calories * quantity).rounded())) kcal · "
+                     + "P\(Int((food.perServing.protein * quantity).rounded())) "
+                     + "C\(Int((food.perServing.carbs * quantity).rounded())) "
+                     + "F\(Int((food.perServing.fats * quantity).rounded()))")
+                    .font(.system(size: 14, design: .rounded)).foregroundStyle(Palette.faint)
+
+                PrimaryButton(title: "Add to \(meal.label)") {
+                    state.logFood(meal: meal, foodId: food.id, quantity: quantity)
+                    Haptics.success()
+                    dismiss()
+                }
+                .accessibilityIdentifier("logFood.add")
                 Spacer()
-                Stepper(value: $quantity, in: 0.5...20, step: 0.5) {
-                    Text(quantity == quantity.rounded() ? String(Int(quantity)) : String(format: "%.1f", quantity))
-                        .font(.system(size: 17, weight: .semibold, design: .rounded)).foregroundStyle(Palette.text)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Palette.bg.ignoresSafeArea())
+            .navigationTitle("Log food")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
                 }
             }
-
-            Text("\(Int((food.perServing.calories * quantity).rounded())) kcal · "
-                 + "P\(Int((food.perServing.protein * quantity).rounded())) "
-                 + "C\(Int((food.perServing.carbs * quantity).rounded())) "
-                 + "F\(Int((food.perServing.fats * quantity).rounded()))")
-                .font(.system(size: 14, design: .rounded)).foregroundStyle(Palette.faint)
-
-            PrimaryButton(title: "Add to \(meal.label)") {
-                state.logFood(meal: meal, foodId: food.id, quantity: quantity)
-                Haptics.success()
-                dismiss()
-            }
-            Spacer()
+            .toolbarColorScheme(.dark, for: .navigationBar)
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Palette.bg.ignoresSafeArea())
+        .accessibilityIdentifier("sheet.logFood")
     }
 }

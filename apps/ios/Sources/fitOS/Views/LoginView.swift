@@ -20,13 +20,16 @@ struct LoginView: View {
 
             VStack(spacing: 12) {
                 field("Username", text: $username)
+                    .accessibilityIdentifier("login.username")
                 secureField("Password", text: $password)
+                    .accessibilityIdentifier("login.password")
 
                 if let err = state.authError {
                     Text(err)
                         .font(.system(size: 13))
                         .foregroundStyle(Palette.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("login.error")
                 }
 
                 PrimaryButton(title: isRegister ? "Create account" : "Log in",
@@ -34,6 +37,7 @@ struct LoginView: View {
                     Task { await submit() }
                 }
                 .padding(.top, 4)
+                .accessibilityIdentifier("login.submit")
 
                 Button {
                     isRegister.toggle()
@@ -45,6 +49,7 @@ struct LoginView: View {
                         .foregroundStyle(Palette.muted)
                 }
                 .padding(.top, 6)
+                .accessibilityIdentifier("login.toggleMode")
             }
             .padding(20)
             .background(Palette.surface)
@@ -58,10 +63,19 @@ struct LoginView: View {
             Spacer(); Spacer()
         }
         .background(Palette.bg.ignoresSafeArea())
+        .accessibilityIdentifier("screen.login")
     }
 
     private func submit() async {
         let u = username.trimmingCharacters(in: .whitespaces).lowercased()
+        guard u.count >= 3 else {
+            state.authError = "Username must be at least 3 characters."
+            return
+        }
+        guard password.count >= 4 else {
+            state.authError = "Password must be at least 4 characters."
+            return
+        }
         if isRegister {
             await state.register(username: u, password: password)
         } else {

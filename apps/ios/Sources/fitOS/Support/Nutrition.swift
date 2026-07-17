@@ -1,26 +1,25 @@
 import Foundation
 
-/// Nutrition math. Mifflin-St Jeor TDEE is exact; the calorie/macro *targets*
-/// use standard defaults — reconcile with apps/web TodayView if the web app
-/// derives them differently, so both platforms show the same numbers.
+/// Nutrition math — kept in lockstep with apps/web `src/lib/utils/nutrition.ts`
+/// and TodayView (TDEE as calorie goal, protein = 1.8 g/kg).
 enum Nutrition {
+    /// Mifflin-St Jeor, rounded (matches web `bmr()`).
     static func bmr(_ p: Profile) -> Double {
         let base = 10 * p.currentWeightKg + 6.25 * p.heightCm - 5 * Double(p.age)
-        return p.sex == "female" ? base - 161 : base + 5
+        let raw = p.sex == "female" ? base - 161 : base + 5
+        return raw.rounded()
     }
 
-    static func tdee(_ p: Profile) -> Double { bmr(p) * p.activity }
+    /// Activity-adjusted TDEE, rounded (matches web `tdee()`).
+    static func tdee(_ p: Profile) -> Double { (bmr(p) * p.activity).rounded() }
 
-    static func calorieTarget(_ p: Profile) -> Double {
-        let t = tdee(p)
-        if p.targetWeightKg < p.currentWeightKg - 0.5 { return (t - 400).rounded() } // cut
-        if p.targetWeightKg > p.currentWeightKg + 0.5 { return (t + 300).rounded() } // bulk
-        return t.rounded()
-    }
+    /// Calorie goal shown on Today — web uses plain TDEE (no cut/bulk offset).
+    static func calorieTarget(_ p: Profile) -> Double { tdee(p) }
 
+    /// Protein 1.8 g/kg (web `proteinGoal`); fats ~25% of cals; carbs fill remainder.
     static func macroTargets(_ p: Profile) -> Macros {
         let cals = calorieTarget(p)
-        let protein = (2.0 * p.currentWeightKg).rounded()
+        let protein = (1.8 * p.currentWeightKg).rounded()
         let fats = (cals * 0.25 / 9).rounded()
         let carbs = max(0, (cals - protein * 4 - fats * 9) / 4).rounded()
         return Macros(calories: cals, protein: protein, carbs: carbs, fiber: 30, fats: fats)

@@ -41,6 +41,7 @@ struct WorkoutPlanView: View {
             .padding(16)
         }
         .background(Palette.bg)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .sheet(isPresented: $showPicker) {
             ExercisePickerSheet { state.addPlanExercise(weekday: weekday, exerciseId: $0) }
         }
@@ -62,22 +63,14 @@ struct WorkoutPlanView: View {
                     }
                 }
                 HStack(spacing: 10) {
-                    labeledStepper("Sets", value: item.sets, range: 1...20) { state.setPlanSets(weekday: weekday, index: idx, $0) }
-                    labeledStepper("Reps", value: item.reps, range: 1...50) { state.setPlanReps(weekday: weekday, index: idx, $0) }
+                    CompactIntControl(label: "Sets", value: item.sets, range: 1...20, digits: 2) {
+                        state.setPlanSets(weekday: weekday, index: idx, $0)
+                    }
+                    CompactIntControl(label: "Reps", value: item.reps, range: 1...50, digits: 2) {
+                        state.setPlanReps(weekday: weekday, index: idx, $0)
+                    }
                 }
             }
         }
-    }
-
-    private func labeledStepper(_ label: String, value: Int, range: ClosedRange<Int>, set: @escaping (Int) -> Void) -> some View {
-        HStack {
-            Text(label).font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.muted)
-            Spacer()
-            Text("\(value)").font(.system(size: 16, weight: .bold, design: .rounded)).foregroundStyle(Palette.text)
-            Stepper("", value: Binding(get: { value }, set: { set($0) }), in: range).labelsHidden()
-        }
-        .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(Palette.surface2)
-        .clipShape(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
     }
 }

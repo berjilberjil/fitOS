@@ -2,8 +2,12 @@
   # Monorepo: build the web app from apps/web. `base` makes command/publish
   # relative to that directory, so the native iOS app in apps/ios is ignored.
   base = "apps/web"
-  command = "npm run build"
+  # Force Netlify adapter even for `netlify deploy --build` locally — without
+  # NETLIFY=true, svelte.config falls back to adapter-node and all /api/*
+  # routes 404 on the CDN (that broke iOS login).
+  command = "NETLIFY=true npm run build"
   publish = "build"
 
 [build.environment]
   NODE_VERSION = "20"
+  NETLIFY = "true"

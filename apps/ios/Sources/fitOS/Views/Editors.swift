@@ -79,6 +79,8 @@ struct FoodEditorSheet: View {
         protein = f.perServing.protein; carbs = f.perServing.carbs
         fiber = f.perServing.fiber; fats = f.perServing.fats
         vitamins = f.vitamins ?? ""; isJunk = f.isJunk
+        // Preserve stored calories (don't recompute and clobber seed data).
+        calOverride = String(Int(f.perServing.calories.rounded()))
     }
 
     private func save() {

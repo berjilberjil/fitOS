@@ -28,6 +28,7 @@ struct MealPlanView: View {
             .padding(16)
         }
         .background(Palette.bg)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .sheet(item: $pickingMeal) { meal in
             FoodPickerSheet { foodId in
                 state.addPlanFood(weekday: weekday, meal: meal, foodId: foodId)
@@ -49,17 +50,27 @@ struct MealPlanView: View {
                     Text("Nothing planned").font(.system(size: 12)).foregroundStyle(Palette.faint)
                 } else {
                     ForEach(Array(items.enumerated()), id: \.offset) { idx, item in
-                        if let f = state.foodsById[item.foodId] {
-                            HStack(spacing: 8) {
-                                Text("\(f.icon)  \(f.name)").font(.system(size: 14)).foregroundStyle(Palette.text)
-                                Spacer()
-                                Text("×\(fmtQty(item.quantity))").font(.system(size: 13, design: .rounded)).foregroundStyle(Palette.faint)
-                                Stepper("", value: Binding(get: { item.quantity },
-                                                           set: { state.setPlanFoodQty(weekday: weekday, meal: meal, index: idx, $0) }),
-                                        in: 0.5...50, step: 0.5).labelsHidden()
-                                Button(role: .destructive) { state.removePlanFood(weekday: weekday, meal: meal, index: idx) } label: {
-                                    Image(systemName: "minus.circle").font(.system(size: 16)).foregroundStyle(Palette.faint)
-                                }
+                        let f = state.foodsById[item.foodId]
+                        HStack(spacing: 8) {
+                            Text("\(f?.icon ?? "❓")  \(f?.name ?? item.foodId)")
+                                .font(.system(size: 14))
+                                .foregroundStyle(f == nil ? Palette.warn : Palette.text)
+                                .lineLimit(2)
+                            Spacer(minLength: 4)
+                            Text("×\(fmtQty(item.quantity))")
+                                .font(.system(size: 13, design: .rounded))
+                                .foregroundStyle(Palette.faint)
+                                .monospacedDigit()
+                            Stepper("", value: Binding(
+                                get: { item.quantity },
+                                set: { state.setPlanFoodQty(weekday: weekday, meal: meal, index: idx, $0) }
+                            ), in: 0.5...50, step: 0.5)
+                            .labelsHidden()
+                            .fixedSize()
+                            Button(role: .destructive) {
+                                state.removePlanFood(weekday: weekday, meal: meal, index: idx)
+                            } label: {
+                                Image(systemName: "minus.circle").font(.system(size: 16)).foregroundStyle(Palette.faint)
                             }
                         }
                     }

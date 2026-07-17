@@ -30,7 +30,8 @@ describe('targetBmi', () => {
 
 describe('bmr (Mifflin-St Jeor)', () => {
   it('male', () => {
-    expect(bmr('male', 70, 175, 21)).toBe(1649);
+    // 10*70 + 6.25*175 - 5*21 + 5 = 1693.75 → 1694
+    expect(bmr('male', 70, 175, 21)).toBe(1694);
   });
   it('female', () => {
     expect(bmr('female', 60, 165, 25)).toBe(1345);
@@ -39,7 +40,7 @@ describe('bmr (Mifflin-St Jeor)', () => {
 
 describe('tdee', () => {
   it('multiplies bmr by activity, rounded', () => {
-    expect(tdee(1649, 1.375)).toBe(2267);
+    expect(tdee(1694, 1.375)).toBe(2329);
   });
 });
 
@@ -63,17 +64,18 @@ describe('scaleMacros', () => {
     const m: Macros = { calories: 100, protein: 3, carbs: 18, fiber: 2, fats: 2.5 };
     expect(scaleMacros(m, 2)).toEqual({ calories: 200, protein: 6, carbs: 36, fiber: 4, fats: 5 });
   });
-  it('supports fractional quantity', () => {
+  it('supports fractional quantity (round1 → 1-decimal)', () => {
     const m: Macros = { calories: 100, protein: 3, carbs: 18, fiber: 2, fats: 2.5 };
-    expect(scaleMacros(m, 0.5)).toEqual({ calories: 50, protein: 1.5, carbs: 9, fiber: 1, fats: 1.25 });
+    // 2.5 * 0.5 = 1.25 → round1 → 1.3 (JS Math.round half-up)
+    expect(scaleMacros(m, 0.5)).toEqual({ calories: 50, protein: 1.5, carbs: 9, fiber: 1, fats: 1.3 });
   });
 });
 
 describe('sumMacros', () => {
   it('adds a list field-wise', () => {
     const a: Macros = { calories: 100, protein: 3, carbs: 18, fiber: 2, fats: 2.5 };
-    const b: Macros = { calories: 50, protein: 1.5, carbs: 9, fiber: 1, fats: 1.25 };
-    expect(sumMacros([a, b])).toEqual({ calories: 150, protein: 4.5, carbs: 27, fiber: 3, fats: 3.75 });
+    const b: Macros = { calories: 50, protein: 1.5, carbs: 9, fiber: 1, fats: 1.3 };
+    expect(sumMacros([a, b])).toEqual({ calories: 150, protein: 4.5, carbs: 27, fiber: 3, fats: 3.8 });
   });
   it('returns zeros for empty list', () => {
     expect(sumMacros([])).toEqual({ calories: 0, protein: 0, carbs: 0, fiber: 0, fats: 0 });

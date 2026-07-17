@@ -5,6 +5,10 @@ export default defineConfig({
   plugins: [sveltekit()],
   test: {
     environment: 'jsdom',
-    include: ['src/**/*.{test,spec}.ts']
+    include: ['src/**/*.{test,spec}.ts'],
+    setupFiles: ['src/test/setup.ts'],
+    environmentOptions: {
+      jsdom: { url: 'http://localhost/' }
+    }
   }
 });

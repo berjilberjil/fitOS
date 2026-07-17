@@ -15,6 +15,8 @@ final class VoiceService: ObservableObject {
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private let engine = AVAudioEngine()
+    /// Prevents double `removeTap` crashes (stop is called from recognition final + UI Done).
+    private var hasTap = false
 
     /// Ask for speech + microphone permission.
     func requestAuth() async -> Bool {
@@ -28,6 +30,8 @@ final class VoiceService: ObservableObject {
     }
 
     func start() {
+        // Always tear down first so re-start / redo never double-installs a tap.
+        stop()
         guard let recognizer, recognizer.isAvailable else { status = .unavailable; return }
         transcript = ""
         do {
@@ -44,6 +48,7 @@ final class VoiceService: ObservableObject {
             input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
                 req.append(buffer)
             }
+            hasTap = true
             engine.prepare()
             try engine.start()
             status = .listening
@@ -59,13 +64,20 @@ final class VoiceService: ObservableObject {
                 }
             }
         } catch {
+            stop()
             status = .unavailable
         }
     }
 
+    /// Idempotent — safe to call multiple times.
     func stop() {
-        engine.stop()
-        engine.inputNode.removeTap(onBus: 0)
+        if engine.isRunning {
+            engine.stop()
+        }
+        if hasTap {
+            engine.inputNode.removeTap(onBus: 0)
+            hasTap = false
+        }
         request?.endAudio()
         task?.cancel()
         request = nil

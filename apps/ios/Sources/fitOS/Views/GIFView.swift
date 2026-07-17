@@ -32,17 +32,51 @@ enum GIFDecoder {
 enum GifMemo { static let cache = NSCache<NSString, UIImage>() }
 
 /// UIImageView wrapper — auto-animates a UIImage that carries `.images`.
+/// Hosted in a plain UIView so the image's intrinsic size cannot blow out SwiftUI layout
+/// (raw UIImageView does — that was the exercise-detail overflow bug).
 struct AnimatedImageView: UIViewRepresentable {
     let image: UIImage?
-    func makeUIView(context: Context) -> UIImageView {
+
+    func makeUIView(context: Context) -> UIView {
+        let container = UIView()
+        container.clipsToBounds = true
+        container.backgroundColor = .clear
+
         let iv = UIImageView()
         iv.contentMode = .scaleAspectFit
         iv.clipsToBounds = true
-        return iv
+        iv.tag = 100
+        // Critical: don't let the image dictate the view's preferred size.
+        iv.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        iv.setContentHuggingPriority(.defaultLow, for: .vertical)
+        iv.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        iv.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
+        iv.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(iv)
+        NSLayoutConstraint.activate([
+            iv.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            iv.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            iv.topAnchor.constraint(equalTo: container.topAnchor),
+            iv.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+        return container
     }
-    func updateUIView(_ v: UIImageView, context: Context) {
-        v.image = image
-        if image?.images != nil { v.startAnimating() }
+
+    func updateUIView(_ container: UIView, context: Context) {
+        guard let iv = container.viewWithTag(100) as? UIImageView else { return }
+        iv.image = image
+        if image?.images != nil {
+            iv.startAnimating()
+        } else {
+            iv.stopAnimating()
+        }
+    }
+
+    /// Zero intrinsic size so SwiftUI parent frames always win.
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIView, context: Context) -> CGSize? {
+        let w = proposal.width ?? 0
+        let h = proposal.height ?? 0
+        return CGSize(width: w, height: h)
     }
 }
 
@@ -51,6 +85,7 @@ struct AnimatedImageView: UIViewRepresentable {
 struct ExerciseDemoView: View {
     let media: ExerciseMedia?
     let emoji: String
+    var height: CGFloat = 240
 
     @State private var gifImage: UIImage?
     @State private var stillImage: UIImage?
@@ -58,9 +93,10 @@ struct ExerciseDemoView: View {
 
     var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: Radius.md, style: .continuous).fill(Palette.surface2)
+            Palette.surface2
             if let img = gifImage ?? stillImage {
-                AnimatedImageView(image: img).padding(6)
+                AnimatedImageView(image: img)
+                    .padding(8)
             } else if !failed {
                 ProgressView().tint(Palette.red)
             } else {
@@ -82,7 +118,14 @@ struct ExerciseDemoView: View {
                 .padding(10)
             }
         }
-        .frame(height: 220)
+        .frame(maxWidth: .infinity)
+        .frame(height: height)
+        .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: Radius.md, style: .continuous)
+                .stroke(Palette.border, lineWidth: 1)
+        )
         .task(id: media?.gif ?? media?.still ?? "") { await load() }
     }
 

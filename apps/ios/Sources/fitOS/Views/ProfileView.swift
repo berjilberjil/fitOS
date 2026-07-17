@@ -23,9 +23,11 @@ struct ProfileView: View {
             Form {
                 Section("You") {
                     TextField("Name", text: $name)
+                        .onChange(of: name) { _ in saved = false }
                     Picker("Sex", selection: $sex) {
                         Text("Male").tag("male"); Text("Female").tag("female")
                     }
+                    .onChange(of: sex) { _ in saved = false }
                     stepperRow("Age", value: $age, range: 12...90, step: 1, unit: "")
                 }
                 Section("Body") {
@@ -37,6 +39,7 @@ struct ProfileView: View {
                     Picker("Level", selection: $activity) {
                         ForEach(activities, id: \.1) { Text($0.0).tag($0.1) }
                     }
+                    .onChange(of: activity) { _ in saved = false }
                 }
                 Section("Targets (Mifflin-St Jeor)") {
                     row("Maintenance", "\(Int(Nutrition.tdee(preview).rounded())) kcal")
@@ -81,6 +84,7 @@ struct ProfileView: View {
             .navigationTitle("Profile")
             .toolbarColorScheme(.dark, for: .navigationBar)
         }
+        .accessibilityIdentifier("screen.profile")
         .onAppear(perform: seed)
     }
 

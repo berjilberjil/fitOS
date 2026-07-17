@@ -7,10 +7,12 @@
   } from '$lib/utils/nutrition';
   import LineChart from './LineChart.svelte';
 
-  let newWeight = $state<number | null>(null);
+  const STEP = 0.25; // 250 g per tap
 
   const series = $derived(weightSeries($weightLog));
   const currentKg = $derived(series.length ? series[series.length - 1].kg : $profile.currentWeightKg);
+  const todayKey = $derived(new Date().toISOString().slice(0, 10));
+  const todayKg = $derived($weightLog[todayKey] ?? currentKg);
   const bmiVal = $derived(bmi(currentKg, $profile.heightCm));
   const status = $derived(bmiStatus(bmiVal));
   const bf = $derived(bodyFat(bmiVal, $profile.age, $profile.sex));
@@ -44,12 +46,11 @@
     return { tag: 'Recomp', kcal: tdeeVal, tip: 'Eat around maintenance and push progressive overload — build muscle while the fat slowly drops.' };
   });
 
-  function submitWeight() {
-    const kg = Number(newWeight);
-    if (!(kg > 0)) return;
-    logWeight(kg);
-    profile.update((p) => ({ ...p, currentWeightKg: kg }));
-    newWeight = null;
+  function bumpWeight(delta: number) {
+    const next = Math.round((todayKg + delta) * 100) / 100;
+    if (!(next >= 20 && next <= 300)) return;
+    logWeight(next);
+    profile.update((p) => ({ ...p, currentWeightKg: next }));
   }
 </script>
 
@@ -58,14 +59,16 @@
   <section class="card blk">
     <div class="wtop">
       <div>
-        <span class="eyebrow">Weight</span>
-        <div class="big num">{currentKg}<span class="u">kg</span></div>
+        <span class="eyebrow">Today's weight</span>
+        <div class="big num">{todayKg}<span class="u">kg</span></div>
       </div>
-      <form class="wlog" onsubmit={(e) => { e.preventDefault(); submitWeight(); }}>
-        <input class="input" type="number" step="0.1" min="20" placeholder="today" bind:value={newWeight} />
-        <button class="btn btn-primary" type="submit" disabled={!newWeight}>Log</button>
-      </form>
+      <div class="wstep">
+        <button class="stepbtn" type="button" aria-label="Decrease 0.25 kg" onclick={() => bumpWeight(-STEP)}>−</button>
+        <span class="stephint">±{STEP}</span>
+        <button class="stepbtn" type="button" aria-label="Increase 0.25 kg" onclick={() => bumpWeight(STEP)}>+</button>
+      </div>
     </div>
+    <p class="wnote muted">Tap + / − for 0.25 kg (250 g) steps — no typing.</p>
     <LineChart data={chartData} unit="kg" />
   </section>
 
@@ -135,10 +138,19 @@
   .eyebrow { display: block; }
   .u { font-size: 0.5em; font-weight: 600; color: var(--muted); margin-left: 2px; }
 
-  .wtop { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  .wtop { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
   .big { font-size: 38px; font-weight: 750; letter-spacing: -0.03em; line-height: 1; margin-top: 4px; }
-  .wlog { display: flex; gap: 8px; align-items: center; }
-  .wlog .input { width: 96px; padding: 9px 10px; font-size: 14px; }
+  .wstep { display: flex; align-items: center; gap: 10px; }
+  .stepbtn {
+    width: 44px; height: 44px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text); font-size: 22px; font-weight: 700; line-height: 1;
+    display: grid; place-items: center;
+    transition: background 150ms ease, transform 120ms ease;
+  }
+  .stepbtn:active { transform: scale(0.94); background: var(--red-soft); color: var(--red); }
+  .stephint { font-size: 12px; font-weight: 700; color: var(--faint); min-width: 36px; text-align: center; }
+  .wnote { font-size: 11.5px; margin: 0 0 12px; }
 
   .stats, .gstats, .targets { display: flex; justify-content: space-between; gap: 10px; }
   .stats { margin-top: 12px; }

@@ -19,12 +19,22 @@ export async function parseFoodLog(params: {
     body: JSON.stringify({
       transcript: params.transcript,
       foods: params.foods.map((f) => ({ id: f.id, name: f.name, serving: f.servingLabel })),
-      plannedFoodIds: params.plannedFoodIds ?? []
+      plannedFoodIds: params.plannedFoodIds ?? [],
+      // Explicit food-only mode so the unified API always returns `items`.
+      mode: 'food'
     })
   });
   if (!res.ok) {
     const msg = (await res.json().catch(() => ({}))).message ?? 'Voice parse failed';
     throw new Error(msg);
   }
-  return (await res.json()) as ParsedFoodLog;
+  const data = (await res.json()) as {
+    meal?: ParsedFoodLog['meal'];
+    items?: ParsedFoodLog['items'];
+    foodItems?: ParsedFoodLog['items'];
+  };
+  return {
+    meal: data.meal ?? null,
+    items: data.items ?? data.foodItems ?? []
+  };
 }

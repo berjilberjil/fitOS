@@ -11,6 +11,27 @@ struct AnatomyView: View {
         Group {
             if let a = state.anatomy {
                 content(a)
+            } else if let err = state.anatomyError {
+                VStack(spacing: 12) {
+                    Text("Couldn't load body map")
+                        .font(.system(size: 15, weight: .semibold)).foregroundStyle(Palette.text)
+                    Text(err).font(.system(size: 12)).foregroundStyle(Palette.muted).multilineTextAlignment(.center)
+                    Button {
+                        Task {
+                            state.anatomy = nil
+                            state.anatomyError = nil
+                            await state.loadAnatomy()
+                            if selectedId == nil { selectedId = state.anatomy?.groups.first?.id }
+                        }
+                    } label: {
+                        Text("Retry").font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 18).padding(.vertical, 10)
+                            .background(Palette.red).clipShape(Capsule())
+                    }
+                }
+                .padding(24)
+                .frame(maxWidth: .infinity, minHeight: 320)
             } else {
                 VStack(spacing: 12) {
                     ProgressView().tint(Palette.red)
@@ -19,6 +40,7 @@ struct AnatomyView: View {
                 .frame(maxWidth: .infinity, minHeight: 320)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .task {
             await state.loadAnatomy()
             if selectedId == nil { selectedId = state.anatomy?.groups.first?.id }

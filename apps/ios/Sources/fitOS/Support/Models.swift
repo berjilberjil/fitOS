@@ -23,6 +23,30 @@ struct Food: Codable, Identifiable, Equatable {
     var vitamins: String?
     var isJunk: Bool
     var isDefault: Bool
+
+    init(id: String, name: String, icon: String, category: String, servingLabel: String,
+         perServing: Macros, vitamins: String?, isJunk: Bool, isDefault: Bool) {
+        self.id = id; self.name = name; self.icon = icon; self.category = category
+        self.servingLabel = servingLabel; self.perServing = perServing
+        self.vitamins = vitamins; self.isJunk = isJunk; self.isDefault = isDefault
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        icon = try c.decodeIfPresent(String.self, forKey: .icon) ?? "🍽️"
+        category = try c.decodeIfPresent(String.self, forKey: .category) ?? "other"
+        servingLabel = try c.decodeIfPresent(String.self, forKey: .servingLabel) ?? "1 serving"
+        perServing = try c.decodeIfPresent(Macros.self, forKey: .perServing) ?? .zero
+        vitamins = try c.decodeIfPresent(String.self, forKey: .vitamins)
+        isJunk = try c.decodeIfPresent(Bool.self, forKey: .isJunk) ?? false
+        isDefault = try c.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, icon, category, servingLabel, perServing, vitamins, isJunk, isDefault
+    }
 }
 
 struct Exercise: Codable, Identifiable, Equatable {
@@ -34,6 +58,29 @@ struct Exercise: Codable, Identifiable, Equatable {
     var primary: String
     var weighted: Bool
     var isDefault: Bool
+
+    init(id: String, name: String, icon: String, category: String, equipment: String,
+         primary: String, weighted: Bool, isDefault: Bool) {
+        self.id = id; self.name = name; self.icon = icon; self.category = category
+        self.equipment = equipment; self.primary = primary
+        self.weighted = weighted; self.isDefault = isDefault
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        icon = try c.decodeIfPresent(String.self, forKey: .icon) ?? "🏋️"
+        category = try c.decodeIfPresent(String.self, forKey: .category) ?? "other"
+        equipment = try c.decodeIfPresent(String.self, forKey: .equipment) ?? "Other"
+        primary = try c.decodeIfPresent(String.self, forKey: .primary) ?? ""
+        weighted = try c.decodeIfPresent(Bool.self, forKey: .weighted) ?? true
+        isDefault = try c.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, icon, category, equipment, primary, weighted, isDefault
+    }
 }
 
 struct Profile: Codable, Equatable {
@@ -76,6 +123,19 @@ struct WorkoutDayPlan: Codable, Equatable {
     var rest: Bool
     var items: [PlanExercise]
     static let empty = WorkoutDayPlan(rest: false, items: [])
+
+    init(rest: Bool, items: [PlanExercise]) {
+        self.rest = rest
+        self.items = items
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        rest = try c.decodeIfPresent(Bool.self, forKey: .rest) ?? false
+        items = try c.decodeIfPresent([PlanExercise].self, forKey: .items) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey { case rest, items }
 }
 
 /// What was actually trained on a date — carries working weight for overload.
@@ -85,12 +145,49 @@ struct LoggedExercise: Codable, Equatable {
     var reps: Int
     var weightKg: Double
     var done: Bool
+
+    /// Lenient decode — older payloads may omit `done` / `weightKg`.
+    init(exerciseId: String, sets: Int, reps: Int, weightKg: Double, done: Bool) {
+        self.exerciseId = exerciseId
+        self.sets = sets
+        self.reps = reps
+        self.weightKg = weightKg
+        self.done = done
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        exerciseId = try c.decode(String.self, forKey: .exerciseId)
+        sets = try c.decodeIfPresent(Int.self, forKey: .sets) ?? WorkoutDefaults.sets
+        reps = try c.decodeIfPresent(Int.self, forKey: .reps) ?? WorkoutDefaults.reps
+        weightKg = try c.decodeIfPresent(Double.self, forKey: .weightKg) ?? 0
+        done = try c.decodeIfPresent(Bool.self, forKey: .done) ?? false
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case exerciseId, sets, reps, weightKg, done
+    }
 }
 
 struct WorkoutDayLog: Codable, Equatable {
     var date: String
     var rest: Bool
     var items: [LoggedExercise]
+
+    init(date: String, rest: Bool, items: [LoggedExercise]) {
+        self.date = date
+        self.rest = rest
+        self.items = items
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        date = try c.decode(String.self, forKey: .date)
+        rest = try c.decodeIfPresent(Bool.self, forKey: .rest) ?? false
+        items = try c.decodeIfPresent([LoggedExercise].self, forKey: .items) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey { case date, rest, items }
 }
 
 /// Weekly routines are Record<weekday(0-6), …> → JSON object with string keys.
@@ -102,6 +199,8 @@ enum WorkoutDefaults {
     static let sets = 3
     static let reps = 10
     static let weightStep = 0.5
+    /// Body-weight log step — 0.25 kg (250 g) per tap.
+    static let bodyWeightStep = 0.25
 }
 
 // ---------------- Meals ----------------
@@ -135,6 +234,7 @@ struct AppStatePayload: Decodable {
     var workoutplan: WorkoutWeekPlan?
     var workoutlog: [String: WorkoutDayLog]?
     var weekplan: WeekPlan?
+    var progressPhotos: [ProgressPhoto]?
 
     enum CodingKeys: String, CodingKey {
         case profile = "luxifit.profile"
@@ -145,6 +245,31 @@ struct AppStatePayload: Decodable {
         case workoutplan = "luxifit.workoutplan"
         case workoutlog = "luxifit.workoutlog"
         case weekplan = "luxifit.weekplan"
+        case progressPhotos = "luxifit.progressphotos"
+    }
+}
+
+// ---------------- Progress photos (compressed JPEG base64 in app_state) ----------------
+
+/// Daily progress photo. JPEG is resized+compressed client-side (~80–150 KB)
+/// so many days fit in Postgres without R2. Swap to R2 later for unlimited HQ.
+struct ProgressPhoto: Codable, Identifiable, Equatable {
+    var id: String
+    var date: String            // yyyy-MM-dd
+    var jpegBase64: String      // compressed JPEG, no data: prefix
+    var note: String?
+    var createdAt: Double       // unix seconds
+
+    init(id: String = UUID().uuidString.lowercased(),
+         date: String,
+         jpegBase64: String,
+         note: String? = nil,
+         createdAt: Double = Date().timeIntervalSince1970) {
+        self.id = id
+        self.date = date
+        self.jpegBase64 = jpegBase64
+        self.note = note
+        self.createdAt = createdAt
     }
 }
 
@@ -207,7 +332,7 @@ struct AnatomyData: Decodable {
     var activation: [String: [Activation]]
 }
 
-// ---------------- Voice logging ----------------
+// ---------------- Voice logging (unified food + workout) ----------------
 
 struct FoodLite: Encodable {
     let id: String
@@ -215,10 +340,19 @@ struct FoodLite: Encodable {
     let serving: String
 }
 
+struct ExerciseLite: Encodable {
+    let id: String
+    let name: String
+    let primary: String
+}
+
 struct VoiceParseRequest: Encodable {
     let transcript: String
     let foods: [FoodLite]
+    let exercises: [ExerciseLite]
     let plannedFoodIds: [String]
+    let plannedExerciseIds: [String]
+    let unified: Bool
 }
 
 struct ParsedItem: Decodable, Identifiable {
@@ -229,7 +363,30 @@ struct ParsedItem: Decodable, Identifiable {
     var id: String { spoken + "|" + foodName }
 }
 
+struct ParsedWorkoutItem: Decodable, Identifiable {
+    let spoken: String
+    let exerciseId: String?
+    let exerciseName: String
+    let sets: Double?
+    let reps: Double?
+    let weightKg: Double?
+    var id: String { spoken + "|" + exerciseName + "|\(sets ?? 0)|\(reps ?? 0)" }
+}
+
 struct ParsedFoodLog: Decodable {
     let meal: String?
     let items: [ParsedItem]
+}
+
+/// Unified voice response — food, workout, or both.
+struct UnifiedVoiceParse: Decodable {
+    let kind: String?
+    let meal: String?
+    let foodItems: [ParsedItem]?
+    let workoutItems: [ParsedWorkoutItem]?
+    /// Back-compat with older food-only field.
+    let items: [ParsedItem]?
+
+    var foods: [ParsedItem] { foodItems ?? items ?? [] }
+    var workouts: [ParsedWorkoutItem] { workoutItems ?? [] }
 }

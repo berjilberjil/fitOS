@@ -24,10 +24,18 @@ final class AppState: ObservableObject {
     @Published var userExercises: [Exercise] = []
     @Published var exerciseMedia: [String: ExerciseMedia] = [:]
     @Published var anatomy: AnatomyData?
+    @Published var anatomyError: String?
 
     @Published var workoutPlan: WorkoutWeekPlan = [:]
     @Published var workoutLog: [String: WorkoutDayLog] = [:]
     @Published var weekPlan: WeekPlan = [:]
+    /// Daily progress photos (compressed JPEG base64) — key `luxifit.progressphotos`.
+    @Published var progressPhotos: [ProgressPhoto] = []
+
+    /// True only after a successful `/api/state` hydrate — blocks push so we never
+    /// clobber server data with empty defaults after a failed load (matches web).
+    private(set) var isHydrated = false
+    @Published var lastSyncError: String?
 
     private let api = APIClient()
     private var pushTasks: [String: Task<Void, Never>] = [:]
@@ -50,8 +58,34 @@ final class AppState: ObservableObject {
     func mediaFor(_ exerciseId: String) -> ExerciseMedia? { exerciseMedia[exerciseId] }
 
     var todayKey: String { Self.dateKey(Date()) }
-    var todayLog: DayLog? { log[todayKey] }
+    /// Today's log, seeded from the weekly meal plan when no entry exists yet
+    /// (same contract as web `getOrSeedDay`).
+    var todayLog: DayLog { dayLog(for: todayKey) }
     var todayWeekday: Int { Self.weekday(of: todayKey) }
+
+    /// Web `getOrSeedDay` — planned meals become the starting log for a fresh date.
+    func dayLog(for date: String) -> DayLog {
+        if let existing = log[date] { return existing }
+        return seedDayFromPlan(date)
+    }
+
+    private func seedDayFromPlan(_ date: String) -> DayLog {
+        let routine = mealPlanDay(Self.weekday(of: date))
+        var meals: [String: [PlanItem]] = [:]
+        for meal in MealKey.allCases {
+            meals[meal.rawValue] = (routine[meal.rawValue] ?? []).map {
+                PlanItem(foodId: $0.foodId, quantity: $0.quantity)
+            }
+        }
+        return DayLog(date: date, meals: meals)
+    }
+
+    /// Resolve editable day (seeds from plan if needed, then writes into `log`).
+    private func editableDayLog(for date: String) -> DayLog {
+        if let existing = log[date] { return existing }
+        let seeded = seedDayFromPlan(date)
+        return seeded
+    }
 
     static func dateKey(_ date: Date) -> String {
         let f = DateFormatter()
@@ -78,6 +112,7 @@ final class AppState: ObservableObject {
             let user = try await api.me()
             username = user.username
             await hydrate()
+            // Session is valid even if state pull failed — push stays gated by isHydrated.
             phase = .loggedIn
         } catch {
             phase = .loggedOut
@@ -100,6 +135,10 @@ final class AppState: ObservableObject {
             username = user.username
             await hydrate()
             phase = .loggedIn
+            if !isHydrated {
+                // Stay in app with banner; saves stay blocked until pull succeeds.
+                lastHydrateError = lastHydrateError ?? "Couldn't load your data. Pull to retry."
+            }
         } catch {
             authError = (error as? APIError)?.message ?? error.localizedDescription
         }
@@ -111,20 +150,34 @@ final class AppState: ObservableObject {
         profile = .default; log = [:]; weightLog = [:]
         userFoods = []; userExercises = []
         workoutPlan = [:]; workoutLog = [:]; weekPlan = [:]
+        progressPhotos = []
         username = ""
+        isHydrated = false
+        lastSyncError = nil
+        anatomy = nil
+        anatomyError = nil
         phase = .loggedOut
     }
 
-    /// Pull catalog + all user state.
+    /// Pull catalog + all user state. Safe to call again for pull-to-refresh.
+    @Published var lastHydrateError: String?
+
     func hydrate() async {
-        async let catalogTask = try? api.catalog()
-        async let stateTask = try? api.state()
-        if let c = await catalogTask {
+        lastHydrateError = nil
+        async let catalogOpt = try? api.catalog()
+        async let stateOpt = try? api.state()
+        let c = await catalogOpt
+        let s = await stateOpt
+
+        if let c {
             catalogFoods = c.foods
             catalogExercises = c.exercises
             exerciseMedia = c.media ?? [:]
+        } else {
+            lastHydrateError = "Couldn't load catalog. Pull to retry."
         }
-        if let s = await stateTask {
+
+        if let s {
             profile = s.profile ?? .default
             log = s.log ?? [:]
             weightLog = s.weightlog ?? [:]
@@ -133,26 +186,88 @@ final class AppState: ObservableObject {
             workoutPlan = s.workoutplan ?? [:]
             workoutLog = s.workoutlog ?? [:]
             weekPlan = s.weekplan ?? [:]
+            progressPhotos = (s.progressPhotos ?? []).sorted { $0.createdAt > $1.createdAt }
+            isHydrated = true
+            lastSyncError = nil
+            if c != nil { lastHydrateError = nil }
+        } else {
+            // Do NOT mark hydrated — blocks push that would wipe server data.
+            isHydrated = false
+            if c != nil {
+                lastHydrateError = "Couldn't load your data. Pull to retry."
+            }
         }
+    }
+
+    func refresh() async {
+        await hydrate()
     }
 
     /// Lazy-load the anatomy dataset the first time the Body view appears.
     func loadAnatomy() async {
         if anatomy != nil { return }
-        anatomy = try? await api.anatomy()
+        anatomyError = nil
+        do {
+            anatomy = try await api.anatomy()
+        } catch {
+            anatomyError = (error as? APIError)?.message ?? error.localizedDescription
+        }
     }
 
-    // MARK: - Voice logging
+    // MARK: - Voice logging (unified food + workout)
 
     func plannedTodayFoodIds() -> [String] {
         let day = mealPlanDay(todayWeekday)
         return MealKey.allCases.flatMap { day[$0.rawValue] ?? [] }.map(\.foodId)
     }
 
-    func parseVoice(transcript: String) async -> ParsedFoodLog? {
-        let lites = allFoods.map { FoodLite(id: $0.id, name: $0.name, serving: $0.servingLabel) }
-        let req = VoiceParseRequest(transcript: transcript, foods: lites, plannedFoodIds: plannedTodayFoodIds())
+    func plannedTodayExerciseIds() -> [String] {
+        todaySession.items.map(\.exerciseId)
+    }
+
+    func parseVoiceUnified(transcript: String) async -> UnifiedVoiceParse? {
+        let foods = allFoods.map { FoodLite(id: $0.id, name: $0.name, serving: $0.servingLabel) }
+        let exs = allExercises.map { ExerciseLite(id: $0.id, name: $0.name, primary: $0.primary) }
+        let req = VoiceParseRequest(
+            transcript: transcript,
+            foods: foods,
+            exercises: exs,
+            plannedFoodIds: plannedTodayFoodIds(),
+            plannedExerciseIds: plannedTodayExerciseIds(),
+            unified: true
+        )
         return try? await api.parseVoice(req)
+    }
+
+    /// Apply voice food items to today's log (same merge logic as manual log).
+    func applyVoiceFoods(meal: MealKey, items: [(foodId: String, quantity: Double)]) {
+        for it in items where it.quantity > 0 {
+            logFood(meal: meal, foodId: it.foodId, quantity: it.quantity)
+        }
+    }
+
+    /// Apply voice workout items — add exercise if missing, set sets/reps/weight when given.
+    func applyVoiceWorkouts(_ items: [ParsedWorkoutItem]) {
+        for it in items {
+            guard let eid = it.exerciseId, exercisesById[eid] != nil else { continue }
+            var day = seededWorkoutDay(todayKey)
+            day.rest = false
+            if let idx = day.items.firstIndex(where: { $0.exerciseId == eid }) {
+                if let s = it.sets { day.items[idx].sets = max(Int(s.rounded()), 1) }
+                if let r = it.reps { day.items[idx].reps = max(Int(r.rounded()), 1) }
+                if let w = it.weightKg { day.items[idx].weightKg = Self.round2(w) }
+            } else {
+                day.items.append(LoggedExercise(
+                    exerciseId: eid,
+                    sets: max(Int((it.sets ?? Double(WorkoutDefaults.sets)).rounded()), 1),
+                    reps: max(Int((it.reps ?? Double(WorkoutDefaults.reps)).rounded()), 1),
+                    weightKg: Self.round2(it.weightKg ?? lastWeight(exerciseId: eid, before: todayKey) ?? 0),
+                    done: false
+                ))
+            }
+            workoutLog[todayKey] = day
+        }
+        push("luxifit.workoutlog", workoutLog)
     }
 
     // MARK: - Profile / weight
@@ -165,18 +280,54 @@ final class AppState: ObservableObject {
 
     func recordWeight(_ kg: Double, on date: Date = Date()) {
         let key = Self.dateKey(date)
-        weightLog[key] = kg
-        var p = profile; p.currentWeightKg = kg
+        let rounded = Self.round2(max(kg, 20))
+        weightLog[key] = rounded
+        var p = profile; p.currentWeightKg = rounded
         profile = p
         push("luxifit.weightlog", weightLog)
         push("luxifit.profile", p)
     }
 
+    /// One-tap body-weight adjust for today (±0.25 kg).
+    func bumpBodyWeight(delta: Double) {
+        let base = weightLog[todayKey] ?? profile.currentWeightKg
+        recordWeight(base + delta)
+    }
+
+    // MARK: - Progress photos
+
+    static let maxProgressPhotos = 40
+
+    func addProgressPhoto(jpegBase64: String, note: String? = nil, date: Date = Date()) {
+        let photo = ProgressPhoto(
+            date: Self.dateKey(date),
+            jpegBase64: jpegBase64,
+            note: note
+        )
+        progressPhotos.insert(photo, at: 0)
+        // Cap storage — drop oldest full photos beyond limit.
+        if progressPhotos.count > Self.maxProgressPhotos {
+            progressPhotos = Array(progressPhotos.prefix(Self.maxProgressPhotos))
+        }
+        push("luxifit.progressphotos", progressPhotos)
+    }
+
+    func deleteProgressPhoto(id: String) {
+        progressPhotos.removeAll { $0.id == id }
+        push("luxifit.progressphotos", progressPhotos)
+    }
+
+    func photos(on dateKey: String) -> [ProgressPhoto] {
+        progressPhotos.filter { $0.date == dateKey }
+    }
+
     // MARK: - Food log (today)
 
     func logFood(meal: MealKey, foodId: String, quantity: Double) {
-        var day = log[todayKey] ?? DayLog(date: todayKey, meals: [:])
+        var day = editableDayLog(for: todayKey)
         var items = day.meals[meal.rawValue] ?? []
+        // Match web: append a new line (merge only exact same food when already present
+        // keeps iOS one-row UX; still safe with index-based remove).
         if let i = items.firstIndex(where: { $0.foodId == foodId }) {
             items[i].quantity += quantity
         } else {
@@ -187,12 +338,34 @@ final class AppState: ObservableObject {
         push("luxifit.log", log)
     }
 
-    func removeFood(meal: MealKey, foodId: String) {
-        guard var day = log[todayKey] else { return }
-        day.meals[meal.rawValue]?.removeAll { $0.foodId == foodId }
-        if day.meals[meal.rawValue]?.isEmpty == true { day.meals[meal.rawValue] = nil }
+    func setFoodQty(meal: MealKey, index: Int, quantity: Double) {
+        var day = editableDayLog(for: todayKey)
+        guard var items = day.meals[meal.rawValue], items.indices.contains(index) else { return }
+        items[index].quantity = max(quantity, 0)
+        day.meals[meal.rawValue] = items
         log[todayKey] = day
         push("luxifit.log", log)
+    }
+
+    func removeFood(meal: MealKey, index: Int) {
+        var day = editableDayLog(for: todayKey)
+        guard var items = day.meals[meal.rawValue], items.indices.contains(index) else { return }
+        items.remove(at: index)
+        day.meals[meal.rawValue] = items
+        log[todayKey] = day
+        push("luxifit.log", log)
+    }
+
+    /// Back-compat helper used by older call sites.
+    func removeFood(meal: MealKey, foodId: String) {
+        var day = editableDayLog(for: todayKey)
+        guard var items = day.meals[meal.rawValue] else { return }
+        if let i = items.firstIndex(where: { $0.foodId == foodId }) {
+            items.remove(at: i)
+            day.meals[meal.rawValue] = items
+            log[todayKey] = day
+            push("luxifit.log", log)
+        }
     }
 
     // MARK: - Workout session (today) — progressive overload
@@ -365,12 +538,23 @@ final class AppState: ObservableObject {
     // MARK: - Push
 
     /// Debounced per-key push, matching the web's 350ms scheduler.
+    /// No-ops until hydrate succeeds so empty defaults never wipe the server.
     private func push(_ key: String, _ value: Encodable) {
+        guard isHydrated else {
+            lastSyncError = "Not synced yet — pull to refresh before saving."
+            return
+        }
         pushTasks[key]?.cancel()
         pushTasks[key] = Task { [api] in
             try? await Task.sleep(nanoseconds: 350_000_000)
             if Task.isCancelled { return }
-            try? await api.putState(key, value)
+            do {
+                try await api.putState(key, value)
+                await MainActor.run { self.lastSyncError = nil }
+            } catch {
+                let msg = (error as? APIError)?.message ?? error.localizedDescription
+                await MainActor.run { self.lastSyncError = "Couldn't save \(key): \(msg)" }
+            }
         }
     }
 }

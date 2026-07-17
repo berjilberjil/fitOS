@@ -52,6 +52,7 @@ struct WorkoutSessionView: View {
             .padding(16)
         }
         .background(Palette.bg)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .sheet(isPresented: $showPicker) {
             ExercisePickerSheet { state.addExerciseToday($0) }
         }
@@ -68,8 +69,14 @@ struct WorkoutSessionView: View {
                         HStack(spacing: 10) {
                             Text(ex?.icon ?? "🏋️").font(.system(size: 22))
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(ex?.name ?? item.exerciseId).font(.system(size: 15, weight: .semibold)).foregroundStyle(Palette.text)
-                                if let p = ex?.primary { Text(p).font(.system(size: 12)).foregroundStyle(Palette.faint) }
+                                Text(ex?.name ?? item.exerciseId)
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(Palette.text)
+                                    .lineLimit(2)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                if let p = ex?.primary {
+                                    Text(p).font(.system(size: 12)).foregroundStyle(Palette.faint).lineLimit(1)
+                                }
                             }
                             Image(systemName: "play.circle").font(.system(size: 13)).foregroundStyle(Palette.faint)
                         }
@@ -84,22 +91,17 @@ struct WorkoutSessionView: View {
                 }
 
                 HStack(spacing: 10) {
-                    intStepper("Sets", value: item.sets, range: 1...20) { state.setLogSets(index: idx, $0) }
-                    intStepper("Reps", value: item.reps, range: 1...50) { state.setLogReps(index: idx, $0) }
+                    CompactIntControl(label: "Sets", value: item.sets, range: 1...20, digits: 2) {
+                        state.setLogSets(index: idx, $0)
+                    }
+                    CompactIntControl(label: "Reps", value: item.reps, range: 1...50, digits: 2) {
+                        state.setLogReps(index: idx, $0)
+                    }
                 }
 
                 if weighted {
-                    HStack {
-                        Text("Weight").font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.muted)
-                        Spacer()
-                        Text(fmtKg(item.weightKg))
-                            .font(.system(size: 17, weight: .bold, design: .rounded)).foregroundStyle(Palette.text)
-                        Stepper("") {
-                            state.bumpWeight(index: idx, delta: WorkoutDefaults.weightStep)
-                        } onDecrement: {
-                            state.bumpWeight(index: idx, delta: -WorkoutDefaults.weightStep)
-                        }
-                        .labelsHidden()
+                    CompactWeightControl(valueKg: item.weightKg) { delta in
+                        state.bumpWeight(index: idx, delta: delta)
                     }
                 }
 
@@ -108,21 +110,5 @@ struct WorkoutSessionView: View {
                 }
             }
         }
-    }
-
-    private func intStepper(_ label: String, value: Int, range: ClosedRange<Int>, set: @escaping (Int) -> Void) -> some View {
-        HStack {
-            Text(label).font(.system(size: 12, weight: .semibold)).foregroundStyle(Palette.muted)
-            Spacer()
-            Text("\(value)").font(.system(size: 16, weight: .bold, design: .rounded)).foregroundStyle(Palette.text)
-            Stepper("", value: Binding(get: { value }, set: { set($0) }), in: range).labelsHidden()
-        }
-        .padding(.horizontal, 12).padding(.vertical, 8)
-        .background(Palette.surface2)
-        .clipShape(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
-    }
-
-    private func fmtKg(_ v: Double) -> String {
-        (v == v.rounded() ? String(Int(v)) : String(format: "%.1f", v)) + " kg"
     }
 }

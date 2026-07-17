@@ -6,10 +6,23 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    MARKETING_VERSION: "0.1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    MARKETING_VERSION: "0.2.0"
+    CURRENT_PROJECT_VERSION: "4"
     SWIFT_VERSION: "5.9"
     DEVELOPMENT_TEAM: "929G58HJFN"
+schemes:
+  fitOS:
+    build:
+      targets:
+        fitOS: all
+        fitOSTests: [test]
+        fitOSUITests: [test]
+    test:
+      targets:
+        - fitOSTests
+        - fitOSUITests
+      gatherCoverageData: false
+
 targets:
   fitOS:
     type: application
@@ -29,12 +42,44 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "fitOS uses the mic so you can log meals by voice."
-        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "fitOS transcribes your voice to log foods."
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: "fitOS uses the mic so you can log meals and workouts by voice."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "fitOS transcribes your voice to log food and workouts."
         INFOPLIST_KEY_NSFaceIDUsageDescription: "fitOS uses Face ID to lock the app."
         INFOPLIST_KEY_NSHealthShareUsageDescription: "fitOS reads your weight and steps from Apple Health."
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: "fitOS saves the weight you log to Apple Health."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "fitOS lets you add progress photos to track your body over time."
     entitlements:
       path: fitOS.entitlements
       properties:
         com.apple.developer.healthkit: true
+
+  fitOSTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: fitOSTests
+    dependencies:
+      - target: fitOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.berjil.fitos.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/fitOS.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/fitOS"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        CODE_SIGN_STYLE: Automatic
+
+  fitOSUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: fitOSUITests
+    dependencies:
+      - target: fitOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.berjil.fitos.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+        TEST_TARGET_NAME: fitOS
+        CODE_SIGN_STYLE: Automatic

@@ -53,7 +53,9 @@ function schedulePush(key: string, value: unknown): void {
 export async function hydrateFromServer(): Promise<void> {
   const res = await fetch('/api/state');
   if (!res.ok) {
-    hydrated = true; // allow local use even if the fetch failed
+    // Do NOT enable push — empty defaults would clobber real server data.
+    // Stores still work in-memory; next successful hydrate (or refresh) unlocks sync.
+    hydrated = false;
     return;
   }
   serverState = (await res.json()) as Record<string, unknown>;
