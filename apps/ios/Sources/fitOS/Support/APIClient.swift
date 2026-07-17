@@ -86,6 +86,10 @@ final class APIClient {
         try await get("api/catalog", as: Catalog.self)
     }
 
+    func anatomy() async throws -> AnatomyData {
+        try await get("api/anatomy", as: AnatomyData.self)
+    }
+
     func state() async throws -> AppStatePayload {
         try await get("api/state", as: AppStatePayload.self)
     }

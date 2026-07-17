@@ -163,3 +163,46 @@ struct AuthUser: Decodable {
     var id: Int
     var username: String
 }
+
+// ---------------- Anatomy ----------------
+
+struct BodyMuscle: Decodable, Identifiable {
+    var slug: String
+    var paths: [String]
+    var id: String { slug }
+}
+
+struct BodyView: Decodable {
+    var viewBox: String
+    var outline: String
+    var muscles: [BodyMuscle]
+}
+
+struct MuscleInfo: Decodable, Identifiable {
+    var name: String
+    var what: String
+    var train: String
+    var id: String { name }
+}
+
+struct MuscleGroup: Decodable, Identifiable {
+    var id: String
+    var name: String
+    var icon: String
+    var view: String            // "front" | "back"
+    var slugs: [String]
+    var blurb: String
+    var muscles: [MuscleInfo]
+}
+
+struct Activation: Decodable {
+    var name: String
+    var percent: Double
+}
+
+struct AnatomyData: Decodable {
+    var front: BodyView
+    var back: BodyView
+    var groups: [MuscleGroup]
+    var activation: [String: [Activation]]
+}

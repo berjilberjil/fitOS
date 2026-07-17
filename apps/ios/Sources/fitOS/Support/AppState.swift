@@ -23,6 +23,7 @@ final class AppState: ObservableObject {
     @Published var userFoods: [Food] = []
     @Published var userExercises: [Exercise] = []
     @Published var exerciseMedia: [String: ExerciseMedia] = [:]
+    @Published var anatomy: AnatomyData?
 
     @Published var workoutPlan: WorkoutWeekPlan = [:]
     @Published var workoutLog: [String: WorkoutDayLog] = [:]
@@ -133,6 +134,12 @@ final class AppState: ObservableObject {
             workoutLog = s.workoutlog ?? [:]
             weekPlan = s.weekplan ?? [:]
         }
+    }
+
+    /// Lazy-load the anatomy dataset the first time the Body view appears.
+    func loadAnatomy() async {
+        if anatomy != nil { return }
+        anatomy = try? await api.anatomy()
     }
 
     // MARK: - Profile / weight

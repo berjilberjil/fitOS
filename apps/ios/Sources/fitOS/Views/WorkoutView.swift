@@ -11,6 +11,7 @@ struct WorkoutView: View {
                     Text("Today").tag(0)
                     Text("Plan").tag(1)
                     Text("Browse").tag(2)
+                    Text("Body").tag(3)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 16)
@@ -19,7 +20,8 @@ struct WorkoutView: View {
                 switch tab {
                 case 0: WorkoutSessionView()
                 case 1: WorkoutPlanView()
-                default: ExerciseCatalog()
+                case 2: ExerciseCatalog()
+                default: AnatomyView()
                 }
             }
             .background(Palette.bg)
