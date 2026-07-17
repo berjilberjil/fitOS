@@ -39,7 +39,7 @@ struct MainTabView: View {
             ForEach(0..<tabs.count, id: \.self) { i in
                 let selected = tab == i
                 Button {
-                    Haptics.tap()
+                    Haptics.selection()
                     withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
                         tab = i
                     }

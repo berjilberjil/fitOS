@@ -26,7 +26,8 @@
         <span class="hint">plan {plannedHint}</span>
       {/if}
     </div>
-    <div class="macros num muted">{m.calories} kcal · P{m.protein} · C{m.carbs} · F{m.fats}</div>
+    <div class="macros num muted">{m.calories} kcal · P{m.protein} · C{m.carbs} · Fi{m.fiber} · F{m.fats}</div>
+    {#if food.vitamins}<div class="vits muted">{food.vitamins}</div>{/if}
   </div>
   <button class="mini" onclick={onswap} aria-label="Swap food" title="Swap">⇄</button>
   <button class="mini" onclick={onremove} aria-label="Remove food" title="Remove">✕</button>
@@ -44,6 +45,7 @@
   .nm { font-weight: 650; font-size: 14px; display: flex; align-items: center; gap: 7px; }
   .hint { font-size: 10px; font-weight: 700; color: var(--faint); background: var(--surface-2); padding: 1px 6px; border-radius: var(--pill); }
   .macros { font-size: 11px; margin-top: 1px; }
+  .vits { font-size: 10.5px; margin-top: 1px; opacity: 0.85; }
   .mini {
     width: 26px; height: 26px; border-radius: var(--pill); flex-shrink: 0;
     background: transparent; border: 1px solid transparent; color: var(--faint); font-size: 13px;

@@ -1,6 +1,7 @@
 import SwiftUI
 import Charts
 import UIKit
+import Photos
 import PhotosUI
 
 /// Progress hub: daily weight (±0.25 kg), trend chart, and compressed progress photos.
@@ -11,7 +12,8 @@ struct ProgressScreen: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var photoBusy = false
     @State private var photoError: String?
-    @State private var expandedPhoto: ProgressPhoto?
+    /// Fullscreen gallery start index (nil = closed).
+    @State private var galleryIndex: Int?
 
     private struct Point: Identifiable {
         let id: String
@@ -63,8 +65,15 @@ struct ProgressScreen: View {
             guard let item else { return }
             Task { await ingestPhoto(item) }
         }
-        .sheet(item: $expandedPhoto) { photo in
-            photoDetail(photo)
+        .fullScreenCover(isPresented: Binding(
+            get: { galleryIndex != nil },
+            set: { if !$0 { galleryIndex = nil } }
+        )) {
+            ProgressPhotoGallery(
+                startIndex: galleryIndex ?? 0,
+                onClose: { galleryIndex = nil }
+            )
+            .environmentObject(state)
         }
     }
 
@@ -210,7 +219,12 @@ struct ProgressScreen: View {
     }
 
     private func photoThumb(_ photo: ProgressPhoto) -> some View {
-        Button { expandedPhoto = photo } label: {
+        Button {
+            if let i = photosSorted.firstIndex(where: { $0.id == photo.id }) {
+                Haptics.soft()
+                galleryIndex = i
+            }
+        } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Group {
                     if let ui = ImageCompressor.image(fromBase64: photo.jpegBase64) {
@@ -232,44 +246,17 @@ struct ProgressScreen: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button(role: .destructive) {
-                state.deleteProgressPhoto(id: photo.id)
-            } label: { Label("Delete", systemImage: "trash") }
-        }
-    }
-
-    private func photoDetail(_ photo: ProgressPhoto) -> some View {
-        NavigationStack {
-            VStack(spacing: 16) {
+            Button {
                 if let ui = ImageCompressor.image(fromBase64: photo.jpegBase64) {
-                    Image(uiImage: ui)
-                        .resizable()
-                        .scaledToFit()
-                        .clipShape(RoundedRectangle(cornerRadius: Radius.md, style: .continuous))
-                }
-                Text(photo.date)
-                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(Palette.text)
-                if let note = photo.note, !note.isEmpty {
-                    Text(note).font(.system(size: 13)).foregroundStyle(Palette.muted)
-                }
-                Spacer()
-            }
-            .padding(16)
-            .background(Palette.bg)
-            .navigationTitle("Photo")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { expandedPhoto = nil }
-                }
-                ToolbarItem(placement: .destructiveAction) {
-                    Button("Delete", role: .destructive) {
-                        state.deleteProgressPhoto(id: photo.id)
-                        expandedPhoto = nil
+                    ProgressPhotoGallery.saveToPhotos(ui) { ok, msg in
+                        if ok { Haptics.success() } else { Haptics.error(); photoError = msg }
                     }
                 }
-            }
-
+            } label: { Label("Save to Photos", systemImage: "square.and.arrow.down") }
+            Button(role: .destructive) {
+                Haptics.warning()
+                state.deleteProgressPhoto(id: photo.id)
+            } label: { Label("Delete", systemImage: "trash") }
         }
     }
 
@@ -364,5 +351,224 @@ struct ProgressScreen: View {
             return String(format: "%.2f", v)
         }
         return String(format: "%.1f", v)
+    }
+}
+
+// MARK: - Fullscreen progress photo gallery (swipe left/right, save, delete)
+
+/// Fullscreen pager: swipe between progress photos without dismissing.
+struct ProgressPhotoGallery: View {
+    @EnvironmentObject var state: AppState
+    let startIndex: Int
+    let onClose: () -> Void
+
+    @State private var index: Int
+    @State private var saveMessage: String?
+    @State private var showDeleteConfirm = false
+
+    init(startIndex: Int, onClose: @escaping () -> Void) {
+        self.startIndex = startIndex
+        self.onClose = onClose
+        _index = State(initialValue: max(startIndex, 0))
+    }
+
+    private var photos: [ProgressPhoto] {
+        state.progressPhotos.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private var current: ProgressPhoto? {
+        guard photos.indices.contains(index) else { return photos.first }
+        return photos[index]
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            if photos.isEmpty {
+                VStack(spacing: 14) {
+                    Text("No photos").foregroundStyle(.white.opacity(0.7))
+                    Button("Close") { onClose() }
+                        .foregroundStyle(Palette.red)
+                }
+            } else {
+                TabView(selection: $index) {
+                    ForEach(Array(photos.enumerated()), id: \.element.id) { i, photo in
+                        galleryPage(photo)
+                            .tag(i)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .automatic))
+                .onChange(of: index) { _ in Haptics.selection() }
+            }
+
+            // Top chrome
+            VStack {
+                HStack {
+                    Button {
+                        Haptics.soft()
+                        onClose()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 40, height: 40)
+                            .background(Color.white.opacity(0.15))
+                            .clipShape(Circle())
+                    }
+
+                    Spacer()
+
+                    if let p = current {
+                        VStack(spacing: 2) {
+                            Text(p.date)
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.white)
+                            if photos.count > 1 {
+                                Text("\(min(index + 1, photos.count)) / \(photos.count)")
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .foregroundStyle(.white.opacity(0.65))
+                            }
+                        }
+                    }
+
+                    Spacer()
+
+                    Button { saveCurrent() } label: {
+                        Image(systemName: "square.and.arrow.down")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 40, height: 40)
+                            .background(Color.white.opacity(0.15))
+                            .clipShape(Circle())
+                    }
+                    .accessibilityLabel("Save to Photos")
+                    .disabled(current == nil)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+
+                Spacer()
+
+                HStack(spacing: 14) {
+                    if photos.count > 1 {
+                        Text("Swipe for next photo")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+                    Spacer()
+                    if current != nil {
+                        Button(role: .destructive) {
+                            Haptics.warning()
+                            showDeleteConfirm = true
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 16).padding(.vertical, 11)
+                                .background(Color.red.opacity(0.55))
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 28)
+            }
+        }
+        .statusBarHidden(true)
+        .onAppear {
+            // Clamp index if start was out of range after a prior delete.
+            if index >= photos.count { index = max(photos.count - 1, 0) }
+        }
+        .alert("Photos", isPresented: Binding(
+            get: { saveMessage != nil },
+            set: { if !$0 { saveMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { saveMessage = nil }
+        } message: { Text(saveMessage ?? "") }
+        .confirmationDialog("Delete this photo?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) { deleteCurrent() }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    private func galleryPage(_ photo: ProgressPhoto) -> some View {
+        VStack(spacing: 12) {
+            Spacer(minLength: 0)
+            if let ui = ImageCompressor.image(fromBase64: photo.jpegBase64) {
+                Image(uiImage: ui)
+                    .resizable()
+                    .scaledToFit()
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(.horizontal, 8)
+            } else {
+                Text("Can't load image")
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            if let note = photo.note, !note.isEmpty {
+                Text(note)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.white.opacity(0.75))
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func deleteCurrent() {
+        guard let id = current?.id else { return }
+        let remaining = photos.count - 1
+        state.deleteProgressPhoto(id: id)
+        Haptics.warning()
+        if remaining <= 0 {
+            onClose()
+        } else if index >= remaining {
+            index = remaining - 1
+        }
+    }
+
+    private func saveCurrent() {
+        guard let photo = current,
+              let ui = ImageCompressor.image(fromBase64: photo.jpegBase64) else {
+            Haptics.error()
+            saveMessage = "Couldn't load this photo."
+            return
+        }
+        Self.saveToPhotos(ui) { ok, msg in
+            DispatchQueue.main.async {
+                if ok {
+                    Haptics.success()
+                    saveMessage = "Saved to Photos"
+                } else {
+                    Haptics.error()
+                    saveMessage = msg
+                }
+            }
+        }
+    }
+
+    /// Shared helper used by gallery + context menu.
+    static func saveToPhotos(_ image: UIImage, completion: @escaping (Bool, String) -> Void) {
+        let handler: (PHAuthorizationStatus) -> Void = { status in
+            guard status == .authorized || status == .limited else {
+                completion(false, "Photos access is required to save. Enable it in Settings → fitOS.")
+                return
+            }
+            PHPhotoLibrary.shared().performChanges({
+                PHAssetChangeRequest.creationRequestForAsset(from: image)
+            }) { ok, err in
+                if ok {
+                    completion(true, "Saved")
+                } else {
+                    completion(false, err?.localizedDescription ?? "Couldn't save photo.")
+                }
+            }
+        }
+        if #available(iOS 14, *) {
+            PHPhotoLibrary.requestAuthorization(for: .addOnly, handler: handler)
+        } else {
+            PHPhotoLibrary.requestAuthorization(handler)
+        }
     }
 }

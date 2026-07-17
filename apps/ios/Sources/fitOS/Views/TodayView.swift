@@ -182,34 +182,43 @@ struct TodayView: View {
 
     private func mealRow(meal: MealKey, index: Int, item: PlanItem) -> some View {
         let food = state.foodsById[item.foodId]
-        return HStack(spacing: 8) {
-            Text("\(food?.icon ?? "❓")  \(food?.name ?? item.foodId)")
-                .font(.system(size: 14))
-                .foregroundStyle(food == nil ? Palette.warn : Palette.text)
-                .lineLimit(2)
-            Spacer(minLength: 4)
-            HStack(spacing: 6) {
+        let q = item.quantity
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text("\(food?.icon ?? "❓")  \(food?.name ?? item.foodId)")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(food == nil ? Palette.warn : Palette.text)
+                    .lineLimit(2)
+                Spacer(minLength: 4)
+                HStack(spacing: 6) {
+                    Button {
+                        Haptics.tap()
+                        state.setFoodQty(meal: meal, index: index, quantity: max(item.quantity - 0.5, 0))
+                    } label: { Image(systemName: "minus.circle.fill").foregroundStyle(Palette.faint) }
+                    .buttonStyle(.plain)
+                    Text(qty(item.quantity))
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Palette.faint).monospacedDigit().frame(minWidth: 28)
+                    Button {
+                        Haptics.tap()
+                        state.setFoodQty(meal: meal, index: index, quantity: item.quantity + 0.5)
+                    } label: { Image(systemName: "plus.circle.fill").foregroundStyle(Palette.faint) }
+                    .buttonStyle(.plain)
+                }
                 Button {
-                    Haptics.tap()
-                    state.setFoodQty(meal: meal, index: index, quantity: max(item.quantity - 0.5, 0))
-                } label: { Image(systemName: "minus.circle.fill").foregroundStyle(Palette.faint) }
-                .buttonStyle(.plain)
-                Text(qty(item.quantity))
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Palette.faint).monospacedDigit().frame(minWidth: 28)
-                Button {
-                    Haptics.tap()
-                    state.setFoodQty(meal: meal, index: index, quantity: item.quantity + 0.5)
-                } label: { Image(systemName: "plus.circle.fill").foregroundStyle(Palette.faint) }
+                    Haptics.warning()
+                    state.removeFood(meal: meal, index: index)
+                } label: {
+                    Image(systemName: "trash").font(.system(size: 14)).foregroundStyle(Palette.faint)
+                }
                 .buttonStyle(.plain)
             }
-            Button {
-                Haptics.tap()
-                state.removeFood(meal: meal, index: index)
-            } label: {
-                Image(systemName: "trash").font(.system(size: 14)).foregroundStyle(Palette.faint)
+            if let m = food?.perServing {
+                Text("\(Int((m.calories * q).rounded())) kcal · P\(Int((m.protein * q).rounded())) · C\(Int((m.carbs * q).rounded())) · Fi\(Int((m.fiber * q).rounded())) · F\(Int((m.fats * q).rounded()))")
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundStyle(Palette.faint)
+                    .monospacedDigit()
             }
-            .buttonStyle(.plain)
         }
     }
 

@@ -49,6 +49,7 @@ struct ProfileView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                    .onChange(of: theme.mode) { _ in Haptics.selection() }
                 }
                 Section("Targets (Mifflin-St Jeor)") {
                     row("Maintenance", "\(Int(Nutrition.tdee(preview).rounded())) kcal")
@@ -75,6 +76,7 @@ struct ProfileView: View {
                     Button {
                         state.saveProfile(preview)
                         saved = true
+                        Haptics.success()
                     } label: {
                         Text(saved ? "Saved ✓" : "Save profile")
                             .frame(maxWidth: .infinity)
@@ -82,6 +84,7 @@ struct ProfileView: View {
                             .fontWeight(.semibold)
                     }
                     Button(role: .destructive) {
+                        Haptics.warning()
                         Task { await state.logout() }
                     } label: {
                         Text("Log out").frame(maxWidth: .infinity)

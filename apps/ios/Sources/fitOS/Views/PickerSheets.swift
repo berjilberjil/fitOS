@@ -77,7 +77,9 @@ struct FoodPickerSheet: View {
                                     Text(food.icon).font(.system(size: 20))
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(food.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Palette.text)
-                                        Text("\(food.servingLabel) · \(Int(food.perServing.calories)) kcal").font(.system(size: 12)).foregroundStyle(Palette.faint)
+                                        Text("\(food.servingLabel) · \(Int(food.perServing.calories)) kcal · P\(Int(food.perServing.protein)) · C\(Int(food.perServing.carbs)) · Fi\(Int(food.perServing.fiber)) · F\(Int(food.perServing.fats))")
+                                            .font(.system(size: 11)).foregroundStyle(Palette.faint)
+                                            .lineLimit(2)
                                     }
                                 }
                             }

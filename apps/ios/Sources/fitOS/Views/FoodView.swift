@@ -15,6 +15,7 @@ struct FoodView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 10)
+                .onChange(of: tab) { _ in Haptics.selection() }
 
                 // Keep both segments mounted so Log ↔ Plan doesn't jump.
                 ZStack(alignment: .top) {
@@ -88,11 +89,20 @@ struct FoodCatalog: View {
             ForEach(grouped, id: \.0) { category, foods in
                 Section {
                     ForEach(foods) { food in
-                        Button { selected = food } label: { row(food) }
+                        Button {
+                            Haptics.soft()
+                            selected = food
+                        } label: { row(food) }
                             .listRowBackground(Palette.surface)
                             .contextMenu {
-                                Button { selected = food } label: { Label("Log to today", systemImage: "plus") }
-                                Button { editingFood = food } label: { Label("Edit food", systemImage: "pencil") }
+                                Button {
+                                    Haptics.soft()
+                                    selected = food
+                                } label: { Label("Log to today", systemImage: "plus") }
+                                Button {
+                                    Haptics.soft()
+                                    editingFood = food
+                                } label: { Label("Edit food", systemImage: "pencil") }
                             }
                     }
                 } header: { Text(category).eyebrow() }
@@ -102,25 +112,63 @@ struct FoodCatalog: View {
         .background(Palette.bg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .sheet(item: $selected) { food in
-            LogFoodSheet(food: food).presentationDetents([.medium])
+            LogFoodSheet(food: food).presentationDetents([.medium, .large])
         }
         .sheet(item: $editingFood) { FoodEditorSheet(editing: $0) }
         .sheet(isPresented: $newFood) { FoodEditorSheet(editing: nil) }
         .sheet(isPresented: $showVoice) { UnifiedVoiceLogSheet() }
     }
 
+    /// Primary: P / C / Fiber / Fats. Secondary: vitamins & other notes.
     private func row(_ f: Food) -> some View {
-        HStack(spacing: 12) {
-            Text(f.icon).font(.system(size: 22))
-            VStack(alignment: .leading, spacing: 2) {
-                Text(f.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Palette.text)
-                Text("\(f.servingLabel) · \(Int(f.perServing.calories)) kcal · P\(Int(f.perServing.protein))")
-                    .font(.system(size: 12)).foregroundStyle(Palette.faint)
+        let m = f.perServing
+        return HStack(alignment: .top, spacing: 12) {
+            Text(f.icon).font(.system(size: 22)).padding(.top, 2)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(f.name)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Palette.text)
+                        .lineLimit(2)
+                    if f.isJunk {
+                        Text("junk")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(Palette.warn)
+                    }
+                }
+                Text("\(f.servingLabel)  ·  \(Int(m.calories.rounded())) kcal")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Palette.muted)
+
+                // Main macros
+                HStack(spacing: 8) {
+                    macroChip("P", m.protein, Palette.red)
+                    macroChip("C", m.carbs, Palette.info)
+                    macroChip("Fi", m.fiber, Palette.ok)
+                    macroChip("F", m.fats, Palette.warn)
+                }
+
+                if let v = f.vitamins, !v.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Text(v)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Palette.faint)
+                        .lineLimit(2)
+                }
             }
-            Spacer()
-            if f.isJunk { Text("junk").font(.system(size: 10, weight: .bold)).foregroundStyle(Palette.warn) }
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
+    }
+
+    private func macroChip(_ label: String, _ grams: Double, _ tint: Color) -> some View {
+        Text("\(label)\(Int(grams.rounded()))")
+            .font(.system(size: 11, weight: .bold, design: .rounded))
+            .foregroundStyle(tint)
+            .monospacedDigit()
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(tint.opacity(0.14))
+            .clipShape(Capsule())
     }
 }
 
@@ -173,11 +221,24 @@ struct LogFoodSheet: View {
                     .accessibilityIdentifier("logFood.servings")
                 }
 
-                Text("\(Int((food.perServing.calories * quantity).rounded())) kcal · "
-                     + "P\(Int((food.perServing.protein * quantity).rounded())) "
-                     + "C\(Int((food.perServing.carbs * quantity).rounded())) "
-                     + "F\(Int((food.perServing.fats * quantity).rounded()))")
-                    .font(.system(size: 14, design: .rounded)).foregroundStyle(Palette.faint)
+                let q = quantity
+                let m = food.perServing
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("\(Int((m.calories * q).rounded())) kcal")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(Palette.text)
+                    HStack(spacing: 10) {
+                        logMacro("Protein", m.protein * q, Palette.red)
+                        logMacro("Carbs", m.carbs * q, Palette.info)
+                        logMacro("Fiber", m.fiber * q, Palette.ok)
+                        logMacro("Fats", m.fats * q, Palette.warn)
+                    }
+                    if let v = food.vitamins, !v.trimmingCharacters(in: .whitespaces).isEmpty {
+                        Text(v)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Palette.faint)
+                    }
+                }
 
                 PrimaryButton(title: "Add to \(meal.label)") {
                     state.logFood(meal: meal, foodId: food.id, quantity: quantity)
@@ -200,5 +261,18 @@ struct LogFoodSheet: View {
 
         }
         .accessibilityIdentifier("sheet.logFood")
+    }
+
+    private func logMacro(_ label: String, _ grams: Double, _ tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(Palette.faint)
+            Text("\(Int(grams.rounded()))g")
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(tint)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

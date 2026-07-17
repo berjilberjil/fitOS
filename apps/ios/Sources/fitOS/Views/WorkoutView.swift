@@ -17,6 +17,7 @@ struct WorkoutView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 10)
+                .onChange(of: tab) { _ in Haptics.selection() }
 
                 // Keep all segments mounted in a fixed frame so switching never
                 // relayouts / jumps (different content heights, searchable, etc.).
