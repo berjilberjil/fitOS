@@ -68,7 +68,7 @@ struct FoodEditorSheet: View {
             .navigationTitle(editing == nil ? "New food" : "Edit food")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
-            .toolbarColorScheme(.dark, for: .navigationBar)
+
         }
         .onAppear(perform: seed)
     }
@@ -158,7 +158,7 @@ struct ExerciseEditorSheet: View {
             .navigationTitle(editing == nil ? "New exercise" : "Edit exercise")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
-            .toolbarColorScheme(.dark, for: .navigationBar)
+
         }
         .onAppear(perform: seed)
     }

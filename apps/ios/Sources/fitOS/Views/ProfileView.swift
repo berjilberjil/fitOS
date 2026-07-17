@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject var state: AppState
+    @EnvironmentObject var theme: ThemeManager
 
     @State private var name = ""
     @State private var age = 21.0
@@ -32,14 +33,22 @@ struct ProfileView: View {
                 }
                 Section("Body") {
                     stepperRow("Height", value: $height, range: 120...220, step: 1, unit: "cm")
-                    stepperRow("Weight", value: $weight, range: 30...200, step: 0.5, unit: "kg")
-                    stepperRow("Target", value: $target, range: 30...200, step: 0.5, unit: "kg")
+                    stepperRow("Weight", value: $weight, range: 30...250, step: 0.5, unit: "kg")
+                    stepperRow("Target", value: $target, range: 30...250, step: 0.5, unit: "kg")
                 }
                 Section("Activity") {
                     Picker("Level", selection: $activity) {
                         ForEach(activities, id: \.1) { Text($0.0).tag($0.1) }
                     }
                     .onChange(of: activity) { _ in saved = false }
+                }
+                Section("Appearance") {
+                    Picker("Theme", selection: $theme.mode) {
+                        ForEach(ThemeMode.allCases) { m in
+                            Text(m.label).tag(m)
+                        }
+                    }
+                    .pickerStyle(.segmented)
                 }
                 Section("Targets (Mifflin-St Jeor)") {
                     row("Maintenance", "\(Int(Nutrition.tdee(preview).rounded())) kcal")
@@ -82,7 +91,6 @@ struct ProfileView: View {
             .scrollContentBackground(.hidden)
             .background(Palette.bg)
             .navigationTitle("Profile")
-            .toolbarColorScheme(.dark, for: .navigationBar)
         }
         .accessibilityIdentifier("screen.profile")
         .onAppear(perform: seed)
@@ -98,7 +106,9 @@ struct ProfileView: View {
         let p = state.profile
         name = p.name ?? ""
         age = Double(p.age); sex = p.sex
-        height = p.heightCm; weight = p.currentWeightKg; target = p.targetWeightKg
+        height = p.heightCm
+        weight = AppState.clampBodyWeight(p.currentWeightKg)
+        target = AppState.clampBodyWeight(p.targetWeightKg)
         activity = p.activity
     }
 

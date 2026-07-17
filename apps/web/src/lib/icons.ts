@@ -5,7 +5,8 @@ export const navIcons: Record<string, string> = {
   '/food': 'lucide:utensils',
   '/progress': 'lucide:trending-up',
   '/workout': 'lucide:dumbbell',
-  '/anatomy': 'game-icons:muscle-up'
+  '/anatomy': 'game-icons:muscle-up',
+  '/profile': 'lucide:user'
 };
 
 export const mealIcons: Record<string, string> = {

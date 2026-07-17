@@ -6,10 +6,13 @@
   import BottomNav from '$lib/components/BottomNav.svelte';
   import AuthGate from '$lib/components/AuthGate.svelte';
   import { currentUser, authReady, initAuth, logout } from '$lib/stores/auth';
+  import { theme } from '$lib/stores/theme';
 
   let { children }: { children: Snippet } = $props();
 
   onMount(() => {
+    // Apply stored theme ASAP (store also applies on subscribe in browser).
+    document.documentElement.setAttribute('data-theme', $theme);
     initAuth();
   });
 </script>

@@ -127,7 +127,34 @@ final class AppStateTests: XCTestCase {
     func testRecordWeight_updatesLogAndProfile() {
         state.recordWeight(72.5)
         XCTAssertEqual(state.profile.currentWeightKg, 72.5, accuracy: 0.001)
-        XCTAssertEqual(state.weightLog[state.todayKey], 72.5)
+        XCTAssertEqual(state.weightLog[state.todayKey] ?? -1, 72.5, accuracy: 0.001)
+    }
+
+    func testRecordWeight_clampsAbsurdValues() {
+        state.recordWeight(494.25)
+        XCTAssertEqual(state.profile.currentWeightKg, AppState.bodyWeightMaxKg, accuracy: 0.001)
+        XCTAssertEqual(state.weightLog[state.todayKey] ?? -1, AppState.bodyWeightMaxKg, accuracy: 0.001)
+
+        state.recordWeight(5)
+        XCTAssertEqual(state.profile.currentWeightKg, AppState.bodyWeightMinKg, accuracy: 0.001)
+    }
+
+    func testBumpBodyWeight_stopsAtMax() {
+        state.recordWeight(249.75)
+        state.bumpBodyWeight(delta: 0.25)
+        XCTAssertEqual(state.profile.currentWeightKg, 250.0, accuracy: 0.001)
+        state.bumpBodyWeight(delta: 0.25)
+        XCTAssertEqual(state.profile.currentWeightKg, 250.0, accuracy: 0.001)
+    }
+
+    func testSanitizeWeightLog_dropsCorruptedEntries() {
+        let clean = AppState.sanitizeWeightLog([
+            "2026-07-01": 72.5,
+            "2026-07-02": 494.25,
+            "2026-07-03": 10
+        ])
+        XCTAssertEqual(clean.count, 1)
+        XCTAssertEqual(clean["2026-07-01"] ?? -1, 72.5, accuracy: 0.001)
     }
 
     func testSaveProfile_marksOnboarded() {

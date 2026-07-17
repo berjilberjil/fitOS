@@ -58,7 +58,7 @@ struct TodayView: View {
             }
             .background(Palette.bg)
             .navigationTitle("Today")
-            .toolbarColorScheme(.dark, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button { Haptics.tap(); showVoice = true } label: {

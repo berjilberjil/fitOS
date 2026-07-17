@@ -64,7 +64,7 @@ struct ExerciseDetailSheet: View {
                     Button("Done") { dismiss() }
                 }
             }
-            .toolbarColorScheme(.dark, for: .navigationBar)
+
         }
         // Keep the sheet from stretching with oversized media.
         .presentationDetents([.large])

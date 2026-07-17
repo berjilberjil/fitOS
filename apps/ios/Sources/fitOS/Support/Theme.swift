@@ -1,21 +1,76 @@
 import SwiftUI
+import UIKit
+
+// MARK: - Theme preference (light / dark / system)
+
+enum ThemeMode: String, CaseIterable, Identifiable {
+    case system, light, dark
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+}
+
+/// App-wide appearance preference. Persisted in UserDefaults (device-local).
+@MainActor
+final class ThemeManager: ObservableObject {
+    private static let key = "fitos.themeMode"
+
+    @Published var mode: ThemeMode {
+        didSet { UserDefaults.standard.set(mode.rawValue, forKey: Self.key) }
+    }
+
+    init() {
+        if let raw = UserDefaults.standard.string(forKey: Self.key),
+           let m = ThemeMode(rawValue: raw) {
+            mode = m
+        } else {
+            mode = .system
+        }
+    }
+
+    /// nil = follow system (preferredColorScheme semantics).
+    var preferredColorScheme: ColorScheme? {
+        switch mode {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
+// MARK: - Palette (adaptive light + dark)
 
 /// fitOS design language — mirrors apps/web/src/app.css.
-/// MyOS-derived: dense, refined, single-accent (vivid red) on pure black.
+/// Adaptive surfaces: pure black (dark) / soft white (light), single red accent.
 enum Palette {
-    static let bg = Color(hex: 0x000000)
-    static let surface = Color(hex: 0x0C0C0E)   // cards
-    static let surface2 = Color(hex: 0x141416)  // inputs
-    static let elevated = Color(hex: 0x1D1D21)
-    static let text = Color(hex: 0xF4F4F5)
-    static let muted = Color(hex: 0xA0A0A6)
-    static let faint = Color(hex: 0x6B6B72)
-    static let border = Color.white.opacity(0.07)
-    static let borderStrong = Color.white.opacity(0.13)
+    static let bg = Color(uiColor: .fitDynamic(dark: 0x000000, light: 0xF4F4F5))
+    static let surface = Color(uiColor: .fitDynamic(dark: 0x0C0C0E, light: 0xFFFFFF))
+    static let surface2 = Color(uiColor: .fitDynamic(dark: 0x141416, light: 0xEBEBED))
+    static let elevated = Color(uiColor: .fitDynamic(dark: 0x1D1D21, light: 0xE0E0E4))
+    static let text = Color(uiColor: .fitDynamic(dark: 0xF4F4F5, light: 0x111114))
+    static let muted = Color(uiColor: .fitDynamic(dark: 0xA0A0A6, light: 0x5C5C64))
+    static let faint = Color(uiColor: .fitDynamic(dark: 0x6B6B72, light: 0x8A8A92))
+    static let border = Color(uiColor: UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor.white.withAlphaComponent(0.07)
+            : UIColor.black.withAlphaComponent(0.08)
+    })
+    static let borderStrong = Color(uiColor: UIColor { tc in
+        tc.userInterfaceStyle == .dark
+            ? UIColor.white.withAlphaComponent(0.13)
+            : UIColor.black.withAlphaComponent(0.14)
+    })
 
-    static let red = Color(hex: 0xEE2E24)       // the single accent
-    static let redBright = Color(hex: 0xFF6A5F)
-    static let redSoft = Color(hex: 0xEE2E24).opacity(0.15)
+    static let red = Color(hex: 0xEE2E24)
+    static let redBright = Color(uiColor: .fitDynamic(dark: 0xFF6A5F, light: 0xD42018))
+    static let redSoft = Color(uiColor: UIColor { tc in
+        UIColor(hex: 0xEE2E24).withAlphaComponent(tc.userInterfaceStyle == .dark ? 0.15 : 0.12)
+    })
     static let ok = Color(hex: 0x37D399)
     static let warn = Color(hex: 0xF5B544)
     static let info = Color(hex: 0x5A9BF7)
@@ -36,6 +91,23 @@ extension Color {
             blue: Double(hex & 0xFF) / 255,
             opacity: 1
         )
+    }
+}
+
+extension UIColor {
+    convenience init(hex: UInt, alpha: CGFloat = 1) {
+        self.init(
+            red: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: alpha
+        )
+    }
+
+    static func fitDynamic(dark: UInt, light: UInt) -> UIColor {
+        UIColor { tc in
+            UIColor(hex: tc.userInterfaceStyle == .dark ? dark : light)
+        }
     }
 }
 

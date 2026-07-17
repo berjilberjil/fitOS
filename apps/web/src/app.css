@@ -1,6 +1,7 @@
 /* fitOS design language — MyOS-derived: dense, refined, single-accent, snappy motion.
-   Palette: pure black / white / red. */
-:root {
+   Dark (default) + light themes via data-theme on <html>. */
+:root,
+[data-theme='dark'] {
   color-scheme: dark;
 
   --bg: #000000;           /* pure black */
@@ -42,6 +43,91 @@
   --content-max: 760px;
 
   --fs: 14px;
+}
+
+[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #f4f4f5;
+  --surface: #ffffff;
+  --surface-2: #ebebed;
+  --elevated: #e0e0e4;
+  --text: #111114;
+  --muted: #5c5c64;
+  --faint: #8a8a92;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+
+  --red: #ee2e24;
+  --red-soft: rgba(238, 46, 36, 0.12);
+  --red-line: rgba(238, 46, 36, 0.38);
+  --red-hover: #d42018;
+  --red-bright: #d42018;
+
+  --ok: #1fa97a;
+  --ok-soft: rgba(31, 169, 122, 0.14);
+  --warn: #c98912;
+  --warn-soft: rgba(201, 137, 18, 0.14);
+  --info: #3b7dd8;
+  --info-soft: rgba(59, 125, 216, 0.14);
+}
+
+/* System preference when user chooses "System" (data-theme="system"). */
+@media (prefers-color-scheme: light) {
+  [data-theme='system'] {
+    color-scheme: light;
+
+    --bg: #f4f4f5;
+    --surface: #ffffff;
+    --surface-2: #ebebed;
+    --elevated: #e0e0e4;
+    --text: #111114;
+    --muted: #5c5c64;
+    --faint: #8a8a92;
+
+    --border: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.14);
+
+    --red: #ee2e24;
+    --red-soft: rgba(238, 46, 36, 0.12);
+    --red-line: rgba(238, 46, 36, 0.38);
+    --red-hover: #d42018;
+    --red-bright: #d42018;
+
+    --ok: #1fa97a;
+    --ok-soft: rgba(31, 169, 122, 0.14);
+    --warn: #c98912;
+    --warn-soft: rgba(201, 137, 18, 0.14);
+    --info: #3b7dd8;
+    --info-soft: rgba(59, 125, 216, 0.14);
+  }
+}
+@media (prefers-color-scheme: dark) {
+  [data-theme='system'] {
+    color-scheme: dark;
+    /* inherits dark tokens from :root when not overridden — restate for clarity */
+    --bg: #000000;
+    --surface: #0c0c0e;
+    --surface-2: #141416;
+    --elevated: #1d1d21;
+    --text: #f4f4f5;
+    --muted: #a0a0a6;
+    --faint: #6b6b72;
+    --border: rgba(255, 255, 255, 0.07);
+    --border-strong: rgba(255, 255, 255, 0.13);
+    --red: #ee2e24;
+    --red-soft: rgba(238, 46, 36, 0.15);
+    --red-line: rgba(238, 46, 36, 0.42);
+    --red-hover: #ff4438;
+    --red-bright: #ff6a5f;
+    --ok: #37d399;
+    --ok-soft: rgba(55, 211, 153, 0.14);
+    --warn: #f5b544;
+    --warn-soft: rgba(245, 181, 68, 0.14);
+    --info: #5a9bf7;
+    --info-soft: rgba(90, 155, 247, 0.14);
+  }
 }
 
 * { box-sizing: border-box; }

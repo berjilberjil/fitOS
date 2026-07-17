@@ -33,7 +33,7 @@ struct UnifiedVoiceLogSheet: View {
                     Button("Cancel") { voice.stop(); dismiss() }
                 }
             }
-            .toolbarColorScheme(.dark, for: .navigationBar)
+
         }
         .task { await begin() }
     }

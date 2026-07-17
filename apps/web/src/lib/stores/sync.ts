@@ -59,10 +59,41 @@ export async function hydrateFromServer(): Promise<void> {
     return;
   }
   serverState = (await res.json()) as Record<string, unknown>;
+
+  // Sanitize body weight before stores seed — fixes corrupted 494 kg / BMI 171.
+  const { sanitizeWeightLog } = await import('./weight-log');
+  const { sanitizeProfile } = await import('./profile');
+  let fixedProfile: unknown | null = null;
+  let fixedWeightLog: unknown | null = null;
+  if (serverState['luxifit.profile'] && typeof serverState['luxifit.profile'] === 'object') {
+    const raw = serverState['luxifit.profile'] as import('$lib/types').Profile;
+    const clean = sanitizeProfile(raw);
+    if (
+      clean.currentWeightKg !== raw.currentWeightKg ||
+      clean.targetWeightKg !== raw.targetWeightKg
+    ) {
+      fixedProfile = clean;
+      serverState['luxifit.profile'] = clean;
+    }
+  }
+  if (serverState['luxifit.weightlog'] && typeof serverState['luxifit.weightlog'] === 'object') {
+    const raw = serverState['luxifit.weightlog'] as Record<string, number>;
+    const clean = sanitizeWeightLog(raw);
+    if (Object.keys(clean).length !== Object.keys(raw).length ||
+        Object.keys(raw).some((k) => clean[k] !== raw[k])) {
+      fixedWeightLog = clean;
+      serverState['luxifit.weightlog'] = clean;
+    }
+  }
+
   for (const [key, store] of registry) {
     if (key in serverState) store.set(serverState[key]);
   }
   hydrated = true; // set AFTER seeding so the seeding sets above don't push
+
+  // Persist corrections so the bad values don't keep coming back.
+  if (fixedProfile != null) schedulePush('luxifit.profile', fixedProfile);
+  if (fixedWeightLog != null) schedulePush('luxifit.weightlog', fixedWeightLog);
 }
 
 export function resetHydration(): void {

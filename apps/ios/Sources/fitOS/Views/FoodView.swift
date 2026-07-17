@@ -33,7 +33,7 @@ struct FoodView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Palette.bg)
             .navigationTitle("Food")
-            .toolbarColorScheme(.dark, for: .navigationBar)
+
             .accessibilityIdentifier("screen.food")
         }
         .transaction { $0.animation = nil }
@@ -197,7 +197,7 @@ struct LogFoodSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .toolbarColorScheme(.dark, for: .navigationBar)
+
         }
         .accessibilityIdentifier("sheet.logFood")
     }

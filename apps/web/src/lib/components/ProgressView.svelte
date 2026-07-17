@@ -48,7 +48,8 @@
 
   function bumpWeight(delta: number) {
     const next = Math.round((todayKg + delta) * 100) / 100;
-    if (!(next >= 20 && next <= 300)) return;
+    // Match BODY_WEIGHT_MIN/MAX (30–250 kg) — blocks runaway 494 kg bugs.
+    if (!(next >= 30 && next <= 250)) return;
     logWeight(next);
     profile.update((p) => ({ ...p, currentWeightKg: next }));
   }

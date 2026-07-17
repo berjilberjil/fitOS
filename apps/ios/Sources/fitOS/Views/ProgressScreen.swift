@@ -269,7 +269,7 @@ struct ProgressScreen: View {
                     }
                 }
             }
-            .toolbarColorScheme(.dark, for: .navigationBar)
+
         }
     }
 

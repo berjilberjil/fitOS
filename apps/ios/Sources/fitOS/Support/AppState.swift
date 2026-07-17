@@ -178,9 +178,15 @@ final class AppState: ObservableObject {
         }
 
         if let s {
-            profile = s.profile ?? .default
+            let rawProfile = s.profile ?? .default
+            let rawWeightLog = s.weightlog ?? [:]
+            let (cleanProfile, profileFixed) = Self.sanitizeProfile(rawProfile)
+            let cleanWeightLog = Self.sanitizeWeightLog(rawWeightLog)
+            let weightLogFixed = cleanWeightLog != rawWeightLog
+
+            profile = cleanProfile
             log = s.log ?? [:]
-            weightLog = s.weightlog ?? [:]
+            weightLog = cleanWeightLog
             userFoods = s.foods ?? []
             userExercises = s.exercises ?? []
             workoutPlan = s.workoutplan ?? [:]
@@ -190,6 +196,10 @@ final class AppState: ObservableObject {
             isHydrated = true
             lastSyncError = nil
             if c != nil { lastHydrateError = nil }
+
+            // Persist clamps so a corrupted 494 kg entry cannot keep resurfacing.
+            if profileFixed { push("luxifit.profile", cleanProfile) }
+            if weightLogFixed { push("luxifit.weightlog", cleanWeightLog) }
         } else {
             // Do NOT mark hydrated — blocks push that would wipe server data.
             isHydrated = false
@@ -272,15 +282,59 @@ final class AppState: ObservableObject {
 
     // MARK: - Profile / weight
 
+    /// Plausible adult body-weight range (kg). Prevents runaway +/- steppers (e.g. 494 kg).
+    static let bodyWeightMinKg = 30.0
+    static let bodyWeightMaxKg = 250.0
+
+    static func clampBodyWeight(_ kg: Double) -> Double {
+        round2(min(max(kg, bodyWeightMinKg), bodyWeightMaxKg))
+    }
+
+    static func isPlausibleBodyWeight(_ kg: Double) -> Bool {
+        kg.isFinite && kg >= bodyWeightMinKg && kg <= bodyWeightMaxKg
+    }
+
+    static func sanitizeWeightLog(_ log: [String: Double]) -> [String: Double] {
+        var out: [String: Double] = [:]
+        for (k, v) in log where isPlausibleBodyWeight(v) {
+            out[k] = round2(v)
+        }
+        return out
+    }
+
+    /// Returns sanitized profile + whether anything was corrected.
+    static func sanitizeProfile(_ p: Profile) -> (Profile, Bool) {
+        var next = p
+        var changed = false
+        if !isPlausibleBodyWeight(next.currentWeightKg) {
+            next.currentWeightKg = Profile.default.currentWeightKg
+            changed = true
+        } else {
+            let c = clampBodyWeight(next.currentWeightKg)
+            if c != next.currentWeightKg { next.currentWeightKg = c; changed = true }
+        }
+        if !isPlausibleBodyWeight(next.targetWeightKg) {
+            next.targetWeightKg = next.currentWeightKg
+            changed = true
+        } else {
+            let t = clampBodyWeight(next.targetWeightKg)
+            if t != next.targetWeightKg { next.targetWeightKg = t; changed = true }
+        }
+        return (next, changed)
+    }
+
     func saveProfile(_ p: Profile) {
-        var next = p; next.onboarded = true
+        var next = p
+        next.onboarded = true
+        next.currentWeightKg = Self.clampBodyWeight(next.currentWeightKg)
+        next.targetWeightKg = Self.clampBodyWeight(next.targetWeightKg)
         profile = next
         push("luxifit.profile", next)
     }
 
     func recordWeight(_ kg: Double, on date: Date = Date()) {
         let key = Self.dateKey(date)
-        let rounded = Self.round2(max(kg, 20))
+        let rounded = Self.clampBodyWeight(kg)
         weightLog[key] = rounded
         var p = profile; p.currentWeightKg = rounded
         profile = p
@@ -288,7 +342,7 @@ final class AppState: ObservableObject {
         push("luxifit.profile", p)
     }
 
-    /// One-tap body-weight adjust for today (±0.25 kg).
+    /// One-tap body-weight adjust for today (±0.25 kg). Clamped by `recordWeight`.
     func bumpBodyWeight(delta: Double) {
         let base = weightLog[todayKey] ?? profile.currentWeightKg
         recordWeight(base + delta)

@@ -16,7 +16,7 @@
   <div class="placeholder rise">
     <div class="glyph"><Icon icon={PROGRESS_ICON} size={44} /></div>
     <h2 class="h2">Set up your profile first</h2>
-    <p class="muted">Head to the <b>Food</b> tab and enter your age, height and weight — then Progress lights up with your BMI, body-fat and six-pack timeline.</p>
+    <p class="muted">Open the <b>Profile</b> tab and enter your age, height and weight — then Progress lights up with your BMI, body-fat and six-pack timeline.</p>
   </div>
 {/if}
 

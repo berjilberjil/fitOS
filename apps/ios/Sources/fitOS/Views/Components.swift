@@ -275,7 +275,7 @@ struct Screen<Content: View>: View {
             }
             .background(Palette.bg)
             .navigationTitle(title)
-            .toolbarColorScheme(.dark, for: .navigationBar)
+
             .refreshable { await state.refresh() }
         }
     }

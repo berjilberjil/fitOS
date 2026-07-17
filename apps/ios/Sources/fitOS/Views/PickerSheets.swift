@@ -43,7 +43,7 @@ struct ExercisePickerSheet: View {
             .navigationTitle("Add exercise")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $search, prompt: "Search exercises")
-            .toolbarColorScheme(.dark, for: .navigationBar)
+
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }
     }
@@ -91,7 +91,7 @@ struct FoodPickerSheet: View {
             .navigationTitle("Add food")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $search, prompt: "Search foods")
-            .toolbarColorScheme(.dark, for: .navigationBar)
+
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }
     }

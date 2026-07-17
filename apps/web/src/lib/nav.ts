@@ -4,7 +4,8 @@ export const TABS: Tab[] = [
   { href: '/food', label: 'Food', icon: '🍽️' },
   { href: '/progress', label: 'Progress', icon: '📈' },
   { href: '/workout', label: 'Workout', icon: '🏋️' },
-  { href: '/anatomy', label: 'Anatomy', icon: '💪' }
+  { href: '/anatomy', label: 'Anatomy', icon: '💪' },
+  { href: '/profile', label: 'Profile', icon: '👤' }
 ];
 
 export const isActive = (href: string, path: string) => path.startsWith(href);

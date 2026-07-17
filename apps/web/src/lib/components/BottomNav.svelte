@@ -19,7 +19,7 @@
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
     height: calc(var(--nav-h) + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
-    display: grid; grid-template-columns: repeat(4, 1fr);
+    display: grid; grid-template-columns: repeat(5, 1fr);
     background: color-mix(in oklab, var(--surface) 82%, transparent);
     backdrop-filter: blur(12px);
     border-top: 1px solid var(--border);

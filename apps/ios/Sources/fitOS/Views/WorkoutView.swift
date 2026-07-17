@@ -44,7 +44,7 @@ struct WorkoutView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Palette.bg)
             .navigationTitle("Workout")
-            .toolbarColorScheme(.dark, for: .navigationBar)
+
             .accessibilityIdentifier("screen.workout")
         }
         // Kill implicit transitions that make segment switches feel like a jump.
