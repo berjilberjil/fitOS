@@ -30,6 +30,7 @@ struct MainTabView: View {
             animatedTabBar
         }
         .background(Palette.bg.ignoresSafeArea())
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("main.tabs")
     }
 

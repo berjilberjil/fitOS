@@ -63,6 +63,9 @@ struct LoginView: View {
             Spacer(); Spacer()
         }
         .background(Palette.bg.ignoresSafeArea())
+        // Keep children queryable (login.username / login.submit) — container
+        // identifiers must not swallow nested ones.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("screen.login")
     }
 
