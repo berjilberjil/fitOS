@@ -1,25 +1,58 @@
 import CoreGraphics
 import Foundation
 
-/// Minimal SVG path-data parser: turns an SVG `d` string into a CGPath.
-/// Supports M/L/H/V/C/S/Q/T/A/Z (absolute + relative). Elliptical arcs are
-/// converted to cubic béziers so ellipse rotation is handled correctly.
+/// SVG path-data parser → CGPath. Streaming reader (not a naive tokenizer) so it
+/// handles SVGO-compacted paths: packed decimals ("15.12.11" = 15.12 then .11),
+/// packed arc flags ("01" = flag 0 then flag 1), and leading-dot numbers (".5").
+/// Supports M/L/H/V/C/S/Q/T/A/Z, absolute + relative; arcs → cubic béziers.
 enum SVGPath {
-    private struct Token { let isCommand: Bool; let command: Character; let value: CGFloat }
-
     static func cgPath(from d: String) -> CGPath {
         let path = CGMutablePath()
-        let tokens = tokenize(d)
-        var idx = 0
+        let s = Array(d)
+        let n = s.count
+        var i = 0
         var current = CGPoint.zero
         var subStart = CGPoint.zero
         var prevCtrl: CGPoint?
         var prevCmd: Character = " "
 
-        func hasNumber() -> Bool { idx < tokens.count && !tokens[idx].isCommand }
-        func num() -> CGFloat { defer { idx += 1 }; return idx < tokens.count ? tokens[idx].value : 0 }
-        func pt(_ rel: Bool) -> CGPoint {
-            let x = num(); let y = num()
+        func isDigit(_ c: Character) -> Bool { c >= "0" && c <= "9" }
+        func isSep(_ c: Character) -> Bool { c == " " || c == "," || c == "\n" || c == "\t" || c == "\r" }
+        func skipSep() { while i < n, isSep(s[i]) { i += 1 } }
+
+        func readNumber() -> CGFloat {
+            skipSep()
+            let start = i
+            if i < n, s[i] == "-" || s[i] == "+" { i += 1 }
+            var seenDot = false
+            while i < n {
+                let c = s[i]
+                if isDigit(c) { i += 1 }
+                else if c == "." && !seenDot { seenDot = true; i += 1 }
+                else { break }
+            }
+            if i < n, s[i] == "e" || s[i] == "E" {
+                i += 1
+                if i < n, s[i] == "-" || s[i] == "+" { i += 1 }
+                while i < n, isDigit(s[i]) { i += 1 }
+            }
+            guard i > start else { return 0 }
+            var str = String(s[start..<i])
+            if str.hasPrefix(".") { str = "0" + str }
+            else if str.hasPrefix("-.") { str = "-0" + str.dropFirst() }
+            else if str.hasPrefix("+.") { str = "0" + str.dropFirst() }
+            return CGFloat(Double(str) ?? 0)
+        }
+
+        // Arc flags are single characters '0' or '1' and may be packed with no separator.
+        func readFlag() -> Bool {
+            skipSep()
+            if i < n, s[i] == "0" || s[i] == "1" { let f = s[i] == "1"; i += 1; return f }
+            return readNumber() != 0
+        }
+
+        func readPoint(_ rel: Bool) -> CGPoint {
+            let x = readNumber(), y = readNumber()
             return rel ? CGPoint(x: current.x + x, y: current.y + y) : CGPoint(x: x, y: y)
         }
         func reflect() -> CGPoint {
@@ -27,91 +60,59 @@ enum SVGPath {
             return CGPoint(x: 2 * current.x - c.x, y: 2 * current.y - c.y)
         }
 
-        while idx < tokens.count {
-            let cmd: Character
-            if tokens[idx].isCommand {
-                cmd = tokens[idx].command; idx += 1
+        while i < n {
+            skipSep()
+            if i >= n { break }
+            let iterStart = i
+            var fromCommand = false
+            var cmd: Character
+            if "MmLlHhVvCcSsQqTtAaZz".contains(s[i]) {
+                cmd = s[i]; i += 1; fromCommand = true
             } else {
-                // Implicit repeat: after M/m subsequent pairs are line-to.
                 cmd = (prevCmd == "M") ? "L" : (prevCmd == "m") ? "l" : prevCmd
             }
             let rel = cmd.isLowercase
-            let u = Character(cmd.uppercased())
-            switch u {
+            switch Character(cmd.uppercased()) {
             case "M":
-                current = pt(rel); path.move(to: current); subStart = current
-                prevCtrl = nil
+                current = readPoint(rel); path.move(to: current); subStart = current; prevCtrl = nil
             case "L":
-                current = pt(rel); path.addLine(to: current); prevCtrl = nil
+                current = readPoint(rel); path.addLine(to: current); prevCtrl = nil
             case "H":
-                let x = num(); current = CGPoint(x: rel ? current.x + x : x, y: current.y)
+                let x = readNumber(); current = CGPoint(x: rel ? current.x + x : x, y: current.y)
                 path.addLine(to: current); prevCtrl = nil
             case "V":
-                let y = num(); current = CGPoint(x: current.x, y: rel ? current.y + y : y)
+                let y = readNumber(); current = CGPoint(x: current.x, y: rel ? current.y + y : y)
                 path.addLine(to: current); prevCtrl = nil
             case "C":
-                let c1 = pt(rel), c2 = pt(rel), end = pt(rel)
-                path.addCurve(to: end, control1: c1, control2: c2)
-                current = end; prevCtrl = c2
+                let c1 = readPoint(rel), c2 = readPoint(rel), e = readPoint(rel)
+                path.addCurve(to: e, control1: c1, control2: c2); current = e; prevCtrl = c2
             case "S":
                 let c1 = (prevCmd == "C" || prevCmd == "c" || prevCmd == "S" || prevCmd == "s") ? reflect() : current
-                let c2 = pt(rel), end = pt(rel)
-                path.addCurve(to: end, control1: c1, control2: c2)
-                current = end; prevCtrl = c2
+                let c2 = readPoint(rel), e = readPoint(rel)
+                path.addCurve(to: e, control1: c1, control2: c2); current = e; prevCtrl = c2
             case "Q":
-                let c = pt(rel), end = pt(rel)
-                path.addQuadCurve(to: end, control: c)
-                current = end; prevCtrl = c
+                let c = readPoint(rel), e = readPoint(rel)
+                path.addQuadCurve(to: e, control: c); current = e; prevCtrl = c
             case "T":
                 let c = (prevCmd == "Q" || prevCmd == "q" || prevCmd == "T" || prevCmd == "t") ? reflect() : current
-                let end = pt(rel)
-                path.addQuadCurve(to: end, control: c)
-                current = end; prevCtrl = c
+                let e = readPoint(rel)
+                path.addQuadCurve(to: e, control: c); current = e; prevCtrl = c
             case "A":
-                let rx = num(), ry = num(), rot = num()
-                let large = num() != 0, sweep = num() != 0
-                let end = pt(rel)
-                addArc(path, from: current, rx: rx, ry: ry, rotationDeg: rot, largeArc: large, sweep: sweep, to: end)
-                current = end; prevCtrl = nil
+                let rx = readNumber(), ry = readNumber(), rot = readNumber()
+                let large = readFlag(), sweep = readFlag()
+                let e = readPoint(rel)
+                addArc(path, from: current, rx: rx, ry: ry, rotationDeg: rot, largeArc: large, sweep: sweep, to: e)
+                current = e; prevCtrl = nil
             case "Z":
                 path.closeSubpath(); current = subStart; prevCtrl = nil
+                if !fromCommand { i += 1 } // avoid a stall on a stray implicit Z
             default:
-                idx += 1 // unknown token — skip to avoid a stall
+                i += 1
             }
+            if i == iterStart { i += 1 } // safety: never stall
             prevCmd = cmd
         }
         return path
-    }
-
-    // MARK: - Tokenizer
-
-    private static func tokenize(_ d: String) -> [Token] {
-        var out: [Token] = []
-        let chars = Array(d)
-        let n = chars.count
-        var i = 0
-        func isCmd(_ c: Character) -> Bool { "MmLlHhVvCcSsQqTtAaZz".contains(c) }
-        func isDigit(_ c: Character) -> Bool { c >= "0" && c <= "9" }
-        while i < n {
-            let c = chars[i]
-            if c == " " || c == "," || c == "\n" || c == "\t" || c == "\r" { i += 1; continue }
-            if isCmd(c) { out.append(Token(isCommand: true, command: c, value: 0)); i += 1; continue }
-            var j = i
-            if chars[j] == "+" || chars[j] == "-" { j += 1 }
-            while j < n && (isDigit(chars[j]) || chars[j] == ".") { j += 1 }
-            if j < n && (chars[j] == "e" || chars[j] == "E") {
-                j += 1
-                if j < n && (chars[j] == "+" || chars[j] == "-") { j += 1 }
-                while j < n && isDigit(chars[j]) { j += 1 }
-            }
-            if j > i, let v = Double(String(chars[i..<j])) {
-                out.append(Token(isCommand: false, command: " ", value: CGFloat(v)))
-                i = j
-            } else {
-                i += 1
-            }
-        }
-        return out
     }
 
     // MARK: - Arc → bézier (SVG implementation notes, F.6)
