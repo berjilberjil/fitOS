@@ -40,8 +40,9 @@ bash apps/ios/scripts/setup-auto-install.sh install
 ```
 
 That schedules a job on **this Mac only** for **22:00 (10 PM)** every day:
-- rebuilds fitOS
-- installs onto whichever iPhone is currently paired/connected
+- `git pull --ff-only` to get the latest code from GitHub (**best-effort**)
+- if pull **fails** (offline, auth, conflicts) → **still rebuilds from the local clone**
+- rebuilds fitOS and installs onto whichever iPhone is currently paired/connected
 - skips quietly if the phone is offline
 
 ### 4. Optional: install right now
@@ -67,13 +68,16 @@ bash apps/ios/scripts/setup-auto-install.sh uninstall
 
 | When | What |
 |------|------|
-| Every day **10:00 PM** | Mac tries to rebuild + reinstall fitOS |
+| Every day **10:00 PM** | Mac: `git pull` (best-effort) → rebuild + reinstall fitOS |
+| Pull fails | Still rebuilds **local** code and installs — install is never blocked by git |
 | Phone **paired + unlocked** | Install succeeds → another ~7 days of use |
 | Phone off / Mac asleep | That night is skipped; tries again next day |
 | After reinstall | **Server data stays** if you log into the same account |
 
-**Data:** food, weight, workouts live on `fit.berjiljacob.com` (login).  
+**Data:** food, weight, workouts, progress photo metadata live on `fit.berjiljacob.com` (login). Photo files live in Cloudflare R2.  
 **Not synced:** theme, local reminder toggles (re-enable notifications once after reinstall).
+
+More detail (scripts, env overrides): root [`README.md`](../../README.md) → **Daily auto rebuild**.
 
 ---
 

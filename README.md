@@ -70,6 +70,7 @@ Everything below is detail on top of that idea.
 | Database       | **Postgres** (Supabase), via **`postgres`** (postgres.js). Single shared pool in `src/lib/server/db.ts`; `prepare:false` for pooler/serverless compatibility. |
 | Auth           | Hand-rolled — `scrypt` password hash + opaque session token in a `sessions` table + httpOnly cookie. No third-party auth lib. |
 | AI             | **Vercel AI SDK** (`ai`) + **`@ai-sdk/google`** (Gemini) for voice parsing, with **`zod`** schemas for structured output. |
+| Object storage | **Cloudflare R2** (S3-compatible) for progress photo **bytes**. Metadata stays in Postgres `app_state`. |
 | Icons          | **`@iconify/svelte`**                            |
 | PWA            | Custom service worker (`src/service-worker.ts`) — precache the app shell, never cache `/api`. |
 | Tests          | **Vitest** (jsdom) — `*.test.ts` next to the code. |
@@ -83,7 +84,8 @@ Everything below is detail on top of that idea.
 | Networking     | `URLSession` + shared `HTTPCookieStorage` → reuses the server's `luxifit_session` cookie (`Support/APIClient.swift`, base URL `https://fit.berjiljacob.com`) |
 | State          | One `AppState: ObservableObject` that mirrors the web's synced stores |
 | Charts         | Swift Charts (weight trend) |
-| Native wins    | **HealthKit** (weight/steps), **Face ID** lock, **Speech** framework (on-device transcription), **haptics** — the things a webview couldn't do well |
+| Native wins    | **HealthKit** (weight/steps), **Face ID** lock, **Speech** framework (on-device transcription), **haptics**, local **notifications**, **progress photos** (R2) |
+| Device install | Free Apple ID (~7-day cert) + optional **daily auto rebuild** via LaunchAgent (`apps/ios/scripts/`) |
 
 There is **no Swift server, no Core Data, no local DB.** The phone is a thin,
 beautiful client over the same HTTP API the browser uses.
@@ -128,7 +130,17 @@ per (user, key). The server never interprets the JSON; the clients own the shape
 | `luxifit.workoutplan` | `WorkoutWeekPlan`                       | repeatable weekly workout routine |
 | `luxifit.workoutlog`  | `Record<dateStr, WorkoutDayLog>`        | what was actually trained, per day (carries working weight) |
 | `luxifit.weightlog`   | `Record<dateStr, number>`               | body-weight history |
+| `luxifit.progressphotos` | `ProgressPhoto[]` (metadata only)    | progress shots — **bytes in R2**, not base64 in Postgres |
 | `luxifit.settings`    | `Settings`                              | misc client settings |
+
+### Media (Cloudflare R2 — progress photos)
+| Method & path              | Purpose |
+|----------------------------|---------|
+| `POST /api/media/upload`   | Auth required. Body `{ jpegBase64, id?, date?, note? }` → puts JPEG in R2, returns `{ id, date, key, url, note, createdAt }` (no bytes). |
+| `GET  /api/media?key=…`    | Auth required. Streams JPEG if `key` is owned by the logged-in user (`progress/{userId}/…`). |
+| `DELETE /api/media`        | Auth required. Body `{ key }` — deletes the R2 object (client still removes the row from `luxifit.progressphotos`). |
+
+Object key shape: `progress/{userId}/{photoId}.jpg`. Bucket/env: `R2_BUCKET`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (see `apps/web/.env.example`). Never commit secrets.
 
 ### Read-only catalogs (public, cached at the edge for 1h)
 | Method & path      | Returns |
@@ -185,13 +197,63 @@ apps/web/
 apps/ios/
   project.yml                   XcodeGen manifest (targets, capabilities, Info.plist keys)
   fitOS.entitlements            HealthKit
+  FRIEND_SETUP.md               Free Apple ID + daily auto reinstall (for you or a friend)
+  scripts/
+    setup-auto-install.sh       install / uninstall / status / run the daily job
+    auto-install-device.sh      git pull (best-effort) → xcodebuild → install on phone
+    com.berjil.fitos.autoinstall.plist   LaunchAgent template (10 PM)
   Sources/fitOS/
     fitOSApp.swift              @main, injects AppState
     Support/                    APIClient, AppState, Models, Nutrition, Theme,
-                                Health/Voice/Biometric/Haptics, SVGPath
+                                Health/Voice/Biometric/Haptics/Notifications, SVGPath, R2 media
     Views/                      SwiftUI screens (one per tab + sheets)
   Resources/Assets.xcassets     AccentColor + AppIcon
 ```
+
+---
+
+## Daily auto rebuild (iOS on a free Apple account)
+
+Free personal-team installs expire about **every 7 days**. fitOS can reinstall
+itself from **your Mac** every night so the app keeps working — and picks up
+whatever is on **GitHub `main`**.
+
+Full friend walkthrough: **[`apps/ios/FRIEND_SETUP.md`](apps/ios/FRIEND_SETUP.md)**.
+
+### What the job does (every day at **10:00 PM** local)
+
+1. **`git pull --ff-only`** in the clone (best-effort).
+2. If pull **fails** (no network, auth, conflicts) → **still rebuilds from the local tree** and installs. Pull never blocks install.
+3. `xcodebuild` Debug → `devicectl` install → launch on the paired iPhone.
+4. Skips quietly if no phone is paired/connected, or if a successful run was &lt;20h ago (use `--force` to override).
+
+### One-time setup (each Mac / each person)
+
+```bash
+# 1) Clone + first Xcode Run on a real iPhone (signing Team once)
+cd apps/ios && xcodegen generate && open fitOS.xcodeproj   # ⌘R on device
+
+# 2) From repo root — enable the LaunchAgent on THIS Mac only
+bash apps/ios/scripts/setup-auto-install.sh install
+```
+
+### Day-to-day commands
+
+```bash
+bash apps/ios/scripts/setup-auto-install.sh status   # last success, device, agent
+bash apps/ios/scripts/setup-auto-install.sh run      # rebuild + install now (--force)
+bash apps/ios/scripts/setup-auto-install.sh uninstall
+open ~/Library/Logs/fitOS/auto-install.log           # full log
+```
+
+| Person | Auto job |
+|--------|----------|
+| **You** | Your Mac @ 10 PM → your iPhone (after `install` once) |
+| **Friend** | **Their** Mac after **they** clone, Xcode Run once, and run `setup-auto-install.sh install` |
+
+Cloning alone does **not** enable the job. Data (food/weight/workouts/photos metadata) lives on the server — reinstall does not wipe the account.
+
+Optional: `FITOS_SKIP_GIT_PULL=1` to rebuild without pulling; `FITOS_BUNDLE_ID=…` if the friend changed the bundle id.
 
 ---
 
@@ -204,7 +266,14 @@ apps/ios/
   DATABASE_URL=postgres://…            # required
   GEMINI_API_KEY=…                     # optional — only voice parsing needs it
   GEMINI_MODEL=gemini-2.5-flash        # optional (default shown)
+  # Progress photos (Cloudflare R2) — required for new photo uploads
+  R2_ACCOUNT_ID=…
+  R2_ACCESS_KEY_ID=…
+  R2_SECRET_ACCESS_KEY=…
+  R2_BUCKET=fitos-media
+  R2_ENDPOINT=https://<accountid>.r2.cloudflarestorage.com
   ```
+  Copy from `apps/web/.env.example`. Never commit real secrets.
 - On a fresh database, apply the schema once: `psql "$DATABASE_URL" -f apps/web/db/schema.sql`
 - For iOS: **Xcode 15+** and **XcodeGen** (`brew install xcodegen`).
 
@@ -217,12 +286,16 @@ npm --prefix apps/web run test   # vitest
 
 npm run ios:gen      # regenerate apps/ios/fitOS.xcodeproj from project.yml
 npm run ios:open     # open it in Xcode  (then ⌘R on a device/simulator)
+
+# Daily free-signing reinstall (see section above)
+bash apps/ios/scripts/setup-auto-install.sh install|run|status|uninstall
 ```
 
 ### Deploy
 Netlify builds from `apps/web` (set via `base` in `netlify.toml`), runs
 `npm run build`, publishes `build/`. Set `DATABASE_URL` / `GEMINI_API_KEY` /
-`GEMINI_MODEL` in the Netlify site env. `apps/ios` is ignored by the web build.
+`GEMINI_MODEL` and the `R2_*` vars in the Netlify site env. `apps/ios` is
+ignored by the web build — ship the native app via Xcode or the auto-install job.
 
 ---
 
