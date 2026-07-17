@@ -197,7 +197,7 @@ struct ProgressScreen: View {
                     .disabled(photoBusy)
                 }
 
-                Text("Photos are resized to 1080px and JPEG-compressed (~80–150 KB) so you can keep weeks of shots without filling storage. Max \(AppState.maxProgressPhotos) photos synced.")
+                Text("Photos are compressed then stored in cloud media (R2). Only metadata syncs with your account. Max \(AppState.maxProgressPhotos) photos.")
                     .font(.system(size: 11)).foregroundStyle(Palette.faint)
 
                 if photosSorted.isEmpty {
@@ -226,18 +226,10 @@ struct ProgressScreen: View {
             }
         } label: {
             VStack(alignment: .leading, spacing: 4) {
-                Group {
-                    if let ui = ImageCompressor.image(fromBase64: photo.jpegBase64) {
-                        Image(uiImage: ui)
-                            .resizable()
-                            .scaledToFill()
-                    } else {
-                        Palette.surface2
-                    }
-                }
-                .frame(width: 110, height: 148)
-                .clipped()
-                .clipShape(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
+                ProgressPhotoImage(photo: photo, contentMode: .fill)
+                    .frame(width: 110, height: 148)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.sm, style: .continuous))
 
                 Text(photo.date)
                     .font(.system(size: 10, weight: .semibold, design: .rounded))
@@ -247,9 +239,14 @@ struct ProgressScreen: View {
         .buttonStyle(.plain)
         .contextMenu {
             Button {
-                if let ui = ImageCompressor.image(fromBase64: photo.jpegBase64) {
-                    ProgressPhotoGallery.saveToPhotos(ui) { ok, msg in
-                        if ok { Haptics.success() } else { Haptics.error(); photoError = msg }
+                Task {
+                    if let ui = await ProgressPhotoImage.loadUIImage(photo) {
+                        ProgressPhotoGallery.saveToPhotos(ui) { ok, msg in
+                            if ok { Haptics.success() } else { Haptics.error(); photoError = msg }
+                        }
+                    } else {
+                        Haptics.error()
+                        photoError = "Couldn't load this photo."
                     }
                 }
             } label: { Label("Save to Photos", systemImage: "square.and.arrow.down") }
@@ -281,10 +278,11 @@ struct ProgressScreen: View {
                 photoError = "Photo is still too large after compression. Try a different shot."
                 return
             }
-            state.addProgressPhoto(jpegBase64: b64)
+            try await state.addProgressPhoto(jpegBase64: b64)
             Haptics.success()
         } catch {
-            photoError = error.localizedDescription
+            photoError = (error as? APIError)?.message ?? error.localizedDescription
+            Haptics.error()
         }
     }
 
@@ -451,11 +449,9 @@ struct ProgressPhotoGallery: View {
                 Spacer()
 
                 HStack(spacing: 14) {
-                    if photos.count > 1 {
-                        Text("Swipe for next photo")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.55))
-                    }
+                    Text(photos.count > 1 ? "Pinch to zoom · swipe for next" : "Pinch to zoom · double-tap")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.55))
                     Spacer()
                     if current != nil {
                         Button(role: .destructive) {
@@ -493,26 +489,17 @@ struct ProgressPhotoGallery: View {
     }
 
     private func galleryPage(_ photo: ProgressPhoto) -> some View {
-        VStack(spacing: 12) {
-            Spacer(minLength: 0)
-            if let ui = ImageCompressor.image(fromBase64: photo.jpegBase64) {
-                Image(uiImage: ui)
-                    .resizable()
-                    .scaledToFit()
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .padding(.horizontal, 8)
-            } else {
-                Text("Can't load image")
-                    .foregroundStyle(.white.opacity(0.6))
-            }
+        VStack(spacing: 0) {
+            GalleryZoomPage(photo: photo)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             if let note = photo.note, !note.isEmpty {
                 Text(note)
                     .font(.system(size: 13))
                     .foregroundStyle(.white.opacity(0.75))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
             }
-            Spacer(minLength: 0)
         }
     }
 
@@ -529,20 +516,28 @@ struct ProgressPhotoGallery: View {
     }
 
     private func saveCurrent() {
-        guard let photo = current,
-              let ui = ImageCompressor.image(fromBase64: photo.jpegBase64) else {
+        guard let photo = current else {
             Haptics.error()
             saveMessage = "Couldn't load this photo."
             return
         }
-        Self.saveToPhotos(ui) { ok, msg in
-            DispatchQueue.main.async {
-                if ok {
-                    Haptics.success()
-                    saveMessage = "Saved to Photos"
-                } else {
+        Task {
+            guard let ui = await ProgressPhotoImage.loadUIImage(photo) else {
+                await MainActor.run {
                     Haptics.error()
-                    saveMessage = msg
+                    saveMessage = "Couldn't load this photo."
+                }
+                return
+            }
+            Self.saveToPhotos(ui) { ok, msg in
+                DispatchQueue.main.async {
+                    if ok {
+                        Haptics.success()
+                        saveMessage = "Saved to Photos"
+                    } else {
+                        Haptics.error()
+                        saveMessage = msg
+                    }
                 }
             }
         }
@@ -570,5 +565,157 @@ struct ProgressPhotoGallery: View {
         } else {
             PHPhotoLibrary.requestAuthorization(handler)
         }
+    }
+}
+
+// MARK: - Gallery page (loads R2 or base64, then zooms)
+
+private struct GalleryZoomPage: View {
+    let photo: ProgressPhoto
+    @State private var image: UIImage?
+    @State private var failed = false
+
+    var body: some View {
+        Group {
+            if let image {
+                ZoomableImageView(image: image)
+            } else if failed {
+                Text("Can't load image")
+                    .foregroundStyle(.white.opacity(0.6))
+            } else {
+                ProgressView().tint(.white)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task(id: photo.id) {
+            if let ui = await ProgressPhotoImage.loadUIImage(photo) {
+                image = ui
+                failed = false
+            } else {
+                failed = true
+            }
+        }
+    }
+}
+
+// MARK: - Zoomable image (pinch + double-tap + pan)
+
+/// UIScrollView-backed zoom so pinch/pan works inside a paging TabView.
+struct ZoomableImageView: UIViewRepresentable {
+    let image: UIImage
+
+    func makeUIView(context: Context) -> ZoomScrollView {
+        let scroll = ZoomScrollView()
+        scroll.delegate = context.coordinator
+        scroll.backgroundColor = .clear
+        scroll.minimumZoomScale = 1
+        scroll.maximumZoomScale = 5
+        scroll.showsHorizontalScrollIndicator = false
+        scroll.showsVerticalScrollIndicator = false
+        scroll.bouncesZoom = true
+        scroll.contentInsetAdjustmentBehavior = .never
+        scroll.delaysContentTouches = false
+
+        let iv = UIImageView(image: image)
+        iv.contentMode = .scaleAspectFit
+        iv.isUserInteractionEnabled = true
+        scroll.imageView = iv
+        scroll.addSubview(iv)
+
+        let doubleTap = UITapGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleDoubleTap(_:))
+        )
+        doubleTap.numberOfTapsRequired = 2
+        scroll.addGestureRecognizer(doubleTap)
+
+        context.coordinator.scrollView = scroll
+        context.coordinator.imageView = iv
+        scroll.onLayout = { [weak coordinator = context.coordinator] in
+            coordinator?.layoutImage()
+        }
+        return scroll
+    }
+
+    func updateUIView(_ scroll: ZoomScrollView, context: Context) {
+        guard let iv = context.coordinator.imageView else { return }
+        if iv.image !== image {
+            iv.image = image
+            scroll.setZoomScale(1, animated: false)
+            context.coordinator.layoutImage()
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator: NSObject, UIScrollViewDelegate {
+        weak var scrollView: ZoomScrollView?
+        weak var imageView: UIImageView?
+
+        func viewForZooming(in scrollView: UIScrollView) -> UIView? { imageView }
+
+        func scrollViewDidZoom(_ scrollView: UIScrollView) {
+            centerImage()
+        }
+
+        func layoutImage() {
+            guard let scroll = scrollView, let iv = imageView, let img = iv.image else { return }
+            let bounds = scroll.bounds.size
+            guard bounds.width > 1, bounds.height > 1 else { return }
+
+            let imgSize = img.size
+            guard imgSize.width > 0, imgSize.height > 0 else { return }
+
+            // Fit image at zoomScale 1
+            let fit = min(bounds.width / imgSize.width, bounds.height / imgSize.height)
+            let w = imgSize.width * fit
+            let h = imgSize.height * fit
+            let zoom = scroll.zoomScale
+            // Reset base frame at scale 1 then let zoom transform apply via contentSize
+            if abs(zoom - 1) < 0.01 {
+                iv.frame = CGRect(x: 0, y: 0, width: w, height: h)
+                scroll.contentSize = CGSize(width: w, height: h)
+            }
+            centerImage()
+        }
+
+        func centerImage() {
+            guard let scroll = scrollView, let iv = imageView else { return }
+            let bounds = scroll.bounds.size
+            let size = iv.frame.size
+            let x = max((bounds.width - size.width) / 2, 0)
+            let y = max((bounds.height - size.height) / 2, 0)
+            var frame = iv.frame
+            frame.origin = CGPoint(x: x, y: y)
+            iv.frame = frame
+        }
+
+        @objc func handleDoubleTap(_ gr: UITapGestureRecognizer) {
+            guard let scroll = scrollView else { return }
+            if scroll.zoomScale > 1.05 {
+                scroll.setZoomScale(1, animated: true)
+                Haptics.soft()
+            } else {
+                let point = gr.location(in: imageView)
+                let target: CGFloat = 2.5
+                let size = scroll.bounds.size
+                let w = size.width / target
+                let h = size.height / target
+                let rect = CGRect(x: point.x - w / 2, y: point.y - h / 2, width: w, height: h)
+                scroll.zoom(to: rect, animated: true)
+                Haptics.soft()
+            }
+        }
+    }
+}
+
+/// Scroll view that re-lays out the image when bounds change.
+final class ZoomScrollView: UIScrollView {
+    var imageView: UIImageView?
+    var onLayout: (() -> Void)?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        onLayout?()
     }
 }

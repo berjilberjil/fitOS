@@ -18,19 +18,15 @@ struct ExerciseDetailSheet: View {
                             height: 240
                         )
 
-                        HStack(alignment: .top, spacing: 10) {
-                            Text(exercise.icon).font(.system(size: 30))
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(exercise.name)
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundStyle(Palette.text)
-                                    .fixedSize(horizontal: false, vertical: true)
-                                Text(exercise.primary)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(Palette.muted)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            Spacer(minLength: 0)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(exercise.name)
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(Palette.text)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(exercise.primary)
+                                .font(.system(size: 13))
+                                .foregroundStyle(Palette.muted)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
 
                         Card {

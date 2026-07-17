@@ -29,7 +29,7 @@ final class AppState: ObservableObject {
     @Published var workoutPlan: WorkoutWeekPlan = [:]
     @Published var workoutLog: [String: WorkoutDayLog] = [:]
     @Published var weekPlan: WeekPlan = [:]
-    /// Daily progress photos (compressed JPEG base64) — key `luxifit.progressphotos`.
+    /// Daily progress photos — metadata in app_state; JPEG bytes in Cloudflare R2.
     @Published var progressPhotos: [ProgressPhoto] = []
 
     /// True only after a successful `/api/state` hydrate — blocks push so we never
@@ -352,23 +352,42 @@ final class AppState: ObservableObject {
 
     static let maxProgressPhotos = 40
 
-    func addProgressPhoto(jpegBase64: String, note: String? = nil, date: Date = Date()) {
-        let photo = ProgressPhoto(
-            date: Self.dateKey(date),
+    /// Upload JPEG to R2, then save metadata only in `luxifit.progressphotos`.
+    func addProgressPhoto(jpegBase64: String, note: String? = nil, date: Date = Date()) async throws {
+        guard isHydrated else {
+            throw APIError(status: 0, message: "Not synced yet — pull to refresh before saving.")
+        }
+        let dateKey = Self.dateKey(date)
+        let photo = try await api.uploadProgressPhoto(
             jpegBase64: jpegBase64,
+            date: dateKey,
             note: note
         )
-        progressPhotos.insert(photo, at: 0)
-        // Cap storage — drop oldest full photos beyond limit.
+        // Never keep base64 in synced state once R2 has the bytes.
+        var stored = photo
+        stored.jpegBase64 = ""
+        progressPhotos.insert(stored, at: 0)
+
+        // Cap metadata list — drop oldest and best-effort delete their R2 objects.
         if progressPhotos.count > Self.maxProgressPhotos {
+            let dropped = progressPhotos.suffix(from: Self.maxProgressPhotos)
             progressPhotos = Array(progressPhotos.prefix(Self.maxProgressPhotos))
+            for old in dropped {
+                if let key = old.key, !key.isEmpty {
+                    Task { try? await api.deleteMedia(key: key) }
+                }
+            }
         }
         push("luxifit.progressphotos", progressPhotos)
     }
 
     func deleteProgressPhoto(id: String) {
+        guard let photo = progressPhotos.first(where: { $0.id == id }) else { return }
         progressPhotos.removeAll { $0.id == id }
         push("luxifit.progressphotos", progressPhotos)
+        if let key = photo.key, !key.isEmpty {
+            Task { try? await api.deleteMedia(key: key) }
+        }
     }
 
     func photos(on dateKey: String) -> [ProgressPhoto] {

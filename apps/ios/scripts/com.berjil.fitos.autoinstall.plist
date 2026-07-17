@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Daily auto re-install of fitOS (free Apple signing expires ~7 days).
+
+  Install:
+    bash apps/ios/scripts/setup-auto-install.sh
+
+  Uninstall:
+    launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.berjil.fitos.autoinstall.plist
+    rm ~/Library/LaunchAgents/com.berjil.fitos.autoinstall.plist
+
+  Logs:
+    ~/Library/Logs/fitOS/auto-install.log
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.berjil.fitos.autoinstall</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/berjilskcript/Documents/Personal/fitOS/apps/ios/scripts/auto-install-device.sh</string>
+  </array>
+
+  <!-- Run once a day at 11:00 local (Mac must be awake / powered on). -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>11</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <!-- Also try shortly after login in case the calendar fire was missed while asleep. -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/berjilskcript/Library/Logs/fitOS/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/berjilskcript/Library/Logs/fitOS/launchd.err.log</string>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

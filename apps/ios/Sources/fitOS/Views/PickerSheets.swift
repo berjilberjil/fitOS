@@ -23,15 +23,32 @@ struct ExercisePickerSheet: View {
                     Section {
                         ForEach(items) { ex in
                             Button {
+                                Haptics.soft()
                                 onPick(ex.id); dismiss()
                             } label: {
                                 HStack(spacing: 12) {
-                                    Text(ex.icon).font(.system(size: 20))
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(ex.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Palette.text)
-                                        Text("\(ex.equipment) · \(ex.primary)").font(.system(size: 12)).foregroundStyle(Palette.faint)
+                                    // Real workout still (same media as Browse tab)
+                                    ExerciseThumb(
+                                        still: state.mediaFor(ex.id)?.still,
+                                        size: CGSize(width: 56, height: 56),
+                                        cornerRadius: Radius.sm
+                                    )
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(ex.name)
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundStyle(Palette.text)
+                                            .multilineTextAlignment(.leading)
+                                        Text("\(ex.equipment) · \(ex.primary)")
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(Palette.faint)
+                                            .lineLimit(1)
                                     }
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.system(size: 20))
+                                        .foregroundStyle(Palette.red)
                                 }
+                                .padding(.vertical, 4)
                             }
                             .listRowBackground(Palette.surface)
                         }

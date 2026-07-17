@@ -52,7 +52,11 @@ struct WorkoutPlanView: View {
         return Card {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 10) {
-                    Text(ex?.icon ?? "🏋️").font(.system(size: 20))
+                    ExerciseThumb(
+                        still: ex.flatMap { state.mediaFor($0.id)?.still },
+                        size: CGSize(width: 40, height: 40),
+                        cornerRadius: 9
+                    )
                     VStack(alignment: .leading, spacing: 2) {
                         Text(ex?.name ?? item.exerciseId).font(.system(size: 15, weight: .semibold)).foregroundStyle(Palette.text)
                         if let p = ex?.primary { Text(p).font(.system(size: 12)).foregroundStyle(Palette.faint) }

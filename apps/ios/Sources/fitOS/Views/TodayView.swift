@@ -265,7 +265,11 @@ struct TodayView: View {
             HStack(spacing: 10) {
                 Button { if let ex { detail = ex } } label: {
                     HStack(spacing: 8) {
-                        Text(ex?.icon ?? "🏋️").font(.system(size: 20))
+                        ExerciseThumb(
+                            still: ex.flatMap { state.mediaFor($0.id)?.still },
+                            size: CGSize(width: 40, height: 40),
+                            cornerRadius: 9
+                        )
                         VStack(alignment: .leading, spacing: 1) {
                             Text(ex?.name ?? item.exerciseId)
                                 .font(.system(size: 14, weight: .semibold)).foregroundStyle(Palette.text)

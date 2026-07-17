@@ -67,7 +67,11 @@ struct WorkoutSessionView: View {
                 HStack(spacing: 10) {
                     Button { if let ex { detail = ex } } label: {
                         HStack(spacing: 10) {
-                            Text(ex?.icon ?? "🏋️").font(.system(size: 22))
+                            ExerciseThumb(
+                                still: ex.flatMap { state.mediaFor($0.id)?.still },
+                                size: CGSize(width: 44, height: 44),
+                                cornerRadius: 10
+                            )
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(ex?.name ?? item.exerciseId)
                                     .font(.system(size: 15, weight: .semibold))

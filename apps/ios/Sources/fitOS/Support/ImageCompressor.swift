@@ -1,7 +1,7 @@
 import UIKit
 
-/// Resize + JPEG-compress photos so progress pics stay sharp enough for
-/// progress tracking but small enough for app_state storage (~80–150 KB).
+/// Resize + JPEG-compress progress photos before upload to Cloudflare R2
+/// (~80–150 KB). Base64 is only used as a wire format for the upload API.
 enum ImageCompressor {
     /// Max edge length in pixels (keeps quality for body progress shots).
     static let maxEdge: CGFloat = 1080

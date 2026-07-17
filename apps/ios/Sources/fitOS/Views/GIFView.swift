@@ -153,26 +153,46 @@ struct ExerciseDemoView: View {
     }
 }
 
-/// Still-photo thumbnail for the browse grid (emoji fallback).
+/// Still-photo thumbnail for browse grid + add-exercise lists.
+/// Prefers real workout media; falls back to a SF Symbol (no emoji).
 struct ExerciseThumb: View {
     let still: String?
-    let emoji: String
+    /// Kept for call-site compatibility; not shown as emoji in the UI.
+    var emoji: String = ""
+    /// Grid cards use a tall height; list rows use a square.
+    var size: CGSize? = nil
+    var cornerRadius: CGFloat = 0
+
+    private var height: CGFloat { size?.height ?? 104 }
+    private var width: CGFloat? { size?.width }
+    private var symbolSize: CGFloat { (size?.height ?? 104) * 0.32 }
+
     var body: some View {
         ZStack {
             Palette.surface2
             if let s = still, let url = URL(string: s) {
                 AsyncImage(url: url) { phase in
                     switch phase {
-                    case .success(let img): img.resizable().scaledToFill()
-                    case .empty: ProgressView().tint(Palette.faint)
-                    default: Text(emoji).font(.system(size: 34))
+                    case .success(let img):
+                        img.resizable().scaledToFill()
+                    case .empty:
+                        ProgressView().tint(Palette.faint)
+                    default:
+                        placeholder
                     }
                 }
             } else {
-                Text(emoji).font(.system(size: 34))
+                placeholder
             }
         }
-        .frame(height: 104)
+        .frame(width: width, height: height)
         .clipped()
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius > 0 ? cornerRadius : 0, style: .continuous))
+    }
+
+    private var placeholder: some View {
+        Image(systemName: "figure.strengthtraining.traditional")
+            .font(.system(size: symbolSize, weight: .medium))
+            .foregroundStyle(Palette.faint)
     }
 }

@@ -110,8 +110,11 @@ struct UnifiedVoiceLogSheet: View {
                     Text("Workout").eyebrow().padding(.top, foods.isEmpty ? 0 : 8)
                     ForEach(workouts) { w in
                         HStack(spacing: 10) {
-                            Text(state.exercisesById[w.exerciseId ?? ""]?.icon ?? "🏋️")
-                                .font(.system(size: 22))
+                            ExerciseThumb(
+                                still: (w.exerciseId).flatMap { state.mediaFor($0)?.still },
+                                size: CGSize(width: 44, height: 44),
+                                cornerRadius: 10
+                            )
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(w.exerciseName)
                                     .font(.system(size: 14, weight: .semibold)).foregroundStyle(Palette.text)

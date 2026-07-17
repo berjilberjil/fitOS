@@ -51,6 +51,18 @@ struct ProfileView: View {
                     .pickerStyle(.segmented)
                     .onChange(of: theme.mode) { _ in Haptics.selection() }
                 }
+                Section("Settings") {
+                    NavigationLink {
+                        NotificationSettingsView()
+                    } label: {
+                        HStack {
+                            Label("Reminders", systemImage: "bell.badge.fill")
+                            Spacer()
+                            Text(NotificationManager.shared.settings.masterEnabled ? "On" : "Off")
+                                .foregroundStyle(Palette.muted)
+                        }
+                    }
+                }
                 Section("Targets (Mifflin-St Jeor)") {
                     row("Maintenance", "\(Int(Nutrition.tdee(preview).rounded())) kcal")
                     row("Goal calories", "\(Int(Nutrition.calorieTarget(preview).rounded())) kcal")

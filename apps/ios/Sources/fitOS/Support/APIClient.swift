@@ -104,6 +104,59 @@ final class APIClient {
         _ = try await request("PUT", "api/state/\(key)", body: value)
     }
 
+    // MARK: - Media (Cloudflare R2 via server)
+
+    /// Upload a compressed progress JPEG (base64) to R2. Returns metadata only.
+    func uploadProgressPhoto(
+        jpegBase64: String,
+        id: String? = nil,
+        date: String? = nil,
+        note: String? = nil
+    ) async throws -> ProgressPhoto {
+        var body: [String: String] = ["jpegBase64": jpegBase64]
+        if let id, !id.isEmpty { body["id"] = id }
+        if let date, !date.isEmpty { body["date"] = date }
+        if let note, !note.isEmpty { body["note"] = note }
+        let data = try await request("POST", "api/media/upload", body: body)
+        return try decoder.decode(ProgressPhoto.self, from: data)
+    }
+
+    /// Delete an R2 object by key (progress photo bytes).
+    func deleteMedia(key: String) async throws {
+        _ = try await request("DELETE", "api/media", body: ["key": key])
+    }
+
+    /// Download image bytes for a progress photo (auth cookie required).
+    func mediaData(for photo: ProgressPhoto) async throws -> Data {
+        if photo.hasLocalBase64, let data = Data(base64Encoded: photo.jpegBase64) {
+            return data
+        }
+        let path: String
+        if let url = photo.url, !url.isEmpty {
+            path = url.hasPrefix("/") ? String(url.dropFirst()) : url
+        } else if let key = photo.key, !key.isEmpty {
+            let encoded = key.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? key
+            path = "api/media?key=\(encoded)"
+        } else {
+            throw APIError(status: 400, message: "Photo has no media key")
+        }
+        // `path` may include query string — build URL carefully.
+        guard let url = URL(string: path, relativeTo: Self.baseURL)?.absoluteURL else {
+            throw APIError(status: -1, message: "Bad media URL")
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "GET"
+        req.setValue("image/jpeg,image/*,*/*", forHTTPHeaderField: "Accept")
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError(status: -1, message: "No response")
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            throw APIError(status: http.statusCode, message: Self.errorText(from: data, status: http.statusCode))
+        }
+        return data
+    }
+
     // MARK: - Helpers
 
     private static func errorText(from data: Data, status: Int) -> String {

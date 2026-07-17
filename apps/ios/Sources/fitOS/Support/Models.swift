@@ -249,28 +249,83 @@ struct AppStatePayload: Decodable {
     }
 }
 
-// ---------------- Progress photos (compressed JPEG base64 in app_state) ----------------
+// ---------------- Progress photos (bytes in Cloudflare R2; metadata in app_state) ----------------
 
-/// Daily progress photo. JPEG is resized+compressed client-side (~80–150 KB)
-/// so many days fit in Postgres without R2. Swap to R2 later for unlimited HQ.
+/// Daily progress photo. New uploads store JPEG bytes in R2 (`key`) and only
+/// metadata in Supabase. Legacy rows may still have `jpegBase64` until re-saved.
 struct ProgressPhoto: Codable, Identifiable, Equatable {
     var id: String
     var date: String            // yyyy-MM-dd
-    var jpegBase64: String      // compressed JPEG, no data: prefix
+    /// Legacy: compressed JPEG base64, no data: prefix. Empty when using R2.
+    var jpegBase64: String
+    /// Cloudflare R2 object key, e.g. `progress/{userId}/{id}.jpg`
+    var key: String?
+    /// Relative API path for authenticated fetch, e.g. `/api/media?key=...`
+    var url: String?
     var note: String?
     var createdAt: Double       // unix seconds
 
     init(id: String = UUID().uuidString.lowercased(),
          date: String,
-         jpegBase64: String,
+         jpegBase64: String = "",
+         key: String? = nil,
+         url: String? = nil,
          note: String? = nil,
          createdAt: Double = Date().timeIntervalSince1970) {
         self.id = id
         self.date = date
         self.jpegBase64 = jpegBase64
+        self.key = key
+        self.url = url
         self.note = note
         self.createdAt = createdAt
     }
+
+    enum CodingKeys: String, CodingKey {
+        case id, date, jpegBase64, key, url, note, createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        date = try c.decodeIfPresent(String.self, forKey: .date) ?? ""
+        jpegBase64 = try c.decodeIfPresent(String.self, forKey: .jpegBase64) ?? ""
+        key = try c.decodeIfPresent(String.self, forKey: .key)
+        url = try c.decodeIfPresent(String.self, forKey: .url)
+        note = try c.decodeIfPresent(String.self, forKey: .note)
+        if let d = try c.decodeIfPresent(Double.self, forKey: .createdAt) {
+            createdAt = d
+        } else if let i = try c.decodeIfPresent(Int.self, forKey: .createdAt) {
+            createdAt = Double(i)
+        } else {
+            createdAt = Date().timeIntervalSince1970
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(date, forKey: .date)
+        // Prefer not to re-sync giant base64 once R2 holds the file.
+        if !jpegBase64.isEmpty && (key == nil || key?.isEmpty == true) {
+            try c.encode(jpegBase64, forKey: .jpegBase64)
+        } else {
+            try c.encode("", forKey: .jpegBase64)
+        }
+        try c.encodeIfPresent(key, forKey: .key)
+        try c.encodeIfPresent(url, forKey: .url)
+        try c.encodeIfPresent(note, forKey: .note)
+        try c.encode(createdAt, forKey: .createdAt)
+    }
+
+    /// True when we can load from R2 (or have a media API path).
+    var hasRemoteMedia: Bool {
+        if let k = key, !k.isEmpty { return true }
+        if let u = url, !u.isEmpty { return true }
+        return false
+    }
+
+    var hasLocalBase64: Bool { !jpegBase64.isEmpty }
 }
 
 struct ExerciseMedia: Decodable, Equatable {
