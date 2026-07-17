@@ -108,30 +108,36 @@ if [[ ! -d "${REPO_ROOT}/.git" ]]; then
   fi
 fi
 
-# Pull latest main so daily reinstall ships remote commits (not just local dirty tree).
-# Skipped if FITOS_SKIP_GIT_PULL=1 or no git / no network.
+# Best-effort git pull. ANY failure is non-fatal — we always continue and
+# rebuild + install from whatever is on disk locally.
+# Skip only if FITOS_SKIP_GIT_PULL=1 or no .git.
 if [[ "${FITOS_SKIP_GIT_PULL:-0}" != "1" && -d "${REPO_ROOT}/.git" ]]; then
-  log "Git pull in ${REPO_ROOT}…"
+  log "Git pull (best-effort) in ${REPO_ROOT}…"
+  set +e
   (
-    cd "$REPO_ROOT"
-    # Stash only if there are local changes so pull can run; restore after.
+    set +e
+    cd "$REPO_ROOT" || exit 0
     DIRTY=0
     if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
       DIRTY=1
-      git stash push -u -m "fitOS auto-install $(date '+%Y-%m-%d %H:%M:%S')" >>"$LOG_FILE" 2>&1 || true
+      git stash push -u -m "fitOS auto-install $(date '+%Y-%m-%d %H:%M:%S')" >>"$LOG_FILE" 2>&1
     fi
-    # Prefer pull --ff-only on current branch (usually main)
     if git pull --ff-only >>"$LOG_FILE" 2>&1; then
       log "Git: fast-forward OK ($(git rev-parse --short HEAD 2>/dev/null || echo '?'))"
     else
-      log "WARN: git pull --ff-only failed (building whatever is on disk)"
+      log "WARN: git pull failed — continuing with LOCAL tree (rebuild still runs)"
     fi
     if [[ "$DIRTY" -eq 1 ]]; then
-      git stash pop >>"$LOG_FILE" 2>&1 || log "WARN: stash pop had conflicts — check repo manually"
+      if ! git stash pop >>"$LOG_FILE" 2>&1; then
+        log "WARN: stash pop had issues — local changes may need manual check; rebuild still runs"
+      fi
     fi
-  ) || log "WARN: git pull step failed"
+    exit 0
+  )
+  set -e
+  log "Proceeding to rebuild from local project (git success or fail does not stop install)"
 else
-  log "Git pull skipped (no .git or FITOS_SKIP_GIT_PULL=1)"
+  log "Git pull skipped (no .git or FITOS_SKIP_GIT_PULL=1) — rebuilding from local project"
 fi
 
 cd "$IOS_DIR"
