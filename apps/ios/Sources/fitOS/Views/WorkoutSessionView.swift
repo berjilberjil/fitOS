@@ -5,6 +5,7 @@ import SwiftUI
 struct WorkoutSessionView: View {
     @EnvironmentObject var state: AppState
     @State private var showPicker = false
+    @State private var detail: Exercise?
 
     var body: some View {
         let session = state.todaySession
@@ -54,6 +55,7 @@ struct WorkoutSessionView: View {
         .sheet(isPresented: $showPicker) {
             ExercisePickerSheet { state.addExerciseToday($0) }
         }
+        .sheet(item: $detail) { ExerciseDetailSheet(exercise: $0) }
     }
 
     private func exerciseCard(_ idx: Int, _ item: LoggedExercise) -> some View {
@@ -62,11 +64,17 @@ struct WorkoutSessionView: View {
         return Card {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 10) {
-                    Text(ex?.icon ?? "🏋️").font(.system(size: 22))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(ex?.name ?? item.exerciseId).font(.system(size: 15, weight: .semibold)).foregroundStyle(Palette.text)
-                        if let p = ex?.primary { Text(p).font(.system(size: 12)).foregroundStyle(Palette.faint) }
+                    Button { if let ex { detail = ex } } label: {
+                        HStack(spacing: 10) {
+                            Text(ex?.icon ?? "🏋️").font(.system(size: 22))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(ex?.name ?? item.exerciseId).font(.system(size: 15, weight: .semibold)).foregroundStyle(Palette.text)
+                                if let p = ex?.primary { Text(p).font(.system(size: 12)).foregroundStyle(Palette.faint) }
+                            }
+                            Image(systemName: "play.circle").font(.system(size: 13)).foregroundStyle(Palette.faint)
+                        }
                     }
+                    .buttonStyle(.plain)
                     Spacer()
                     Button { state.toggleDone(index: idx) } label: {
                         Image(systemName: item.done ? "checkmark.circle.fill" : "circle")

@@ -16,10 +16,13 @@ final class AppState: ObservableObject {
     @Published var profile: Profile = .default
     @Published var log: [String: DayLog] = [:]
     @Published var weightLog: [String: Double] = [:]
-    @Published var customFoods: [Food] = []
-    @Published var customExercises: [Exercise] = []
-    @Published var catalogFoods: [Food] = []
+    @Published var catalogFoods: [Food] = []          // from /api/catalog (seed)
     @Published var catalogExercises: [Exercise] = []
+    // luxifit.foods / luxifit.exercises hold the user's FULL list once they've
+    // edited anything (web seeds them with the whole catalog). Empty => use catalog.
+    @Published var userFoods: [Food] = []
+    @Published var userExercises: [Exercise] = []
+    @Published var exerciseMedia: [String: ExerciseMedia] = [:]
 
     @Published var workoutPlan: WorkoutWeekPlan = [:]
     @Published var workoutLog: [String: WorkoutDayLog] = [:]
@@ -30,14 +33,20 @@ final class AppState: ObservableObject {
 
     // MARK: - Derived
 
-    var allFoods: [Food] { catalogFoods + customFoods }
-    var allExercises: [Exercise] { catalogExercises + customExercises }
+    /// The user's list once edited, otherwise the shipped catalog.
+    var allFoods: [Food] { userFoods.isEmpty ? catalogFoods : userFoods }
+    var allExercises: [Exercise] {
+        guard !userExercises.isEmpty else { return catalogExercises }
+        let have = Set(userExercises.map(\.id))
+        return userExercises + catalogExercises.filter { !have.contains($0.id) }
+    }
     var foodsById: [String: Food] {
         Dictionary(allFoods.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
     }
     var exercisesById: [String: Exercise] {
         Dictionary(allExercises.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
     }
+    func mediaFor(_ exerciseId: String) -> ExerciseMedia? { exerciseMedia[exerciseId] }
 
     var todayKey: String { Self.dateKey(Date()) }
     var todayLog: DayLog? { log[todayKey] }
@@ -99,7 +108,7 @@ final class AppState: ObservableObject {
         await api.logout()
         HTTPCookieStorage.shared.cookies?.forEach { HTTPCookieStorage.shared.deleteCookie($0) }
         profile = .default; log = [:]; weightLog = [:]
-        customFoods = []; customExercises = []
+        userFoods = []; userExercises = []
         workoutPlan = [:]; workoutLog = [:]; weekPlan = [:]
         username = ""
         phase = .loggedOut
@@ -112,13 +121,14 @@ final class AppState: ObservableObject {
         if let c = await catalogTask {
             catalogFoods = c.foods
             catalogExercises = c.exercises
+            exerciseMedia = c.media ?? [:]
         }
         if let s = await stateTask {
             profile = s.profile ?? .default
             log = s.log ?? [:]
             weightLog = s.weightlog ?? [:]
-            customFoods = s.foods ?? []
-            customExercises = s.exercises ?? []
+            userFoods = s.foods ?? []
+            userExercises = s.exercises ?? []
             workoutPlan = s.workoutplan ?? [:]
             workoutLog = s.workoutlog ?? [:]
             weekPlan = s.weekplan ?? [:]
@@ -288,6 +298,48 @@ final class AppState: ObservableObject {
             guard var arr = d[meal.rawValue], arr.indices.contains(index) else { return }
             arr.remove(at: index); d[meal.rawValue] = arr
         }
+    }
+
+    // MARK: - Custom foods / exercises (edit the full list, persist luxifit.foods/exercises)
+
+    private static func newId(_ prefix: String) -> String { "\(prefix)-" + UUID().uuidString.lowercased() }
+
+    func saveFood(_ food: Food) {
+        var f = food
+        var list = allFoods
+        if let i = list.firstIndex(where: { $0.id == f.id }) {
+            list[i] = f
+        } else {
+            if f.id.isEmpty { f.id = Self.newId("food") }
+            f.isDefault = false
+            list.insert(f, at: 0)
+        }
+        userFoods = list
+        push("luxifit.foods", list)
+    }
+
+    func deleteFood(id: String) {
+        userFoods = allFoods.filter { $0.id != id }
+        push("luxifit.foods", userFoods)
+    }
+
+    func saveExercise(_ exercise: Exercise) {
+        var e = exercise
+        var list = allExercises
+        if let i = list.firstIndex(where: { $0.id == e.id }) {
+            list[i] = e
+        } else {
+            if e.id.isEmpty { e.id = Self.newId("ex-custom") }
+            e.isDefault = false
+            list.insert(e, at: 0)
+        }
+        userExercises = list
+        push("luxifit.exercises", list)
+    }
+
+    func deleteExercise(id: String) {
+        userExercises = allExercises.filter { $0.id != id }
+        push("luxifit.exercises", userExercises)
     }
 
     // MARK: - Push

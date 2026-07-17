@@ -57,4 +57,10 @@ enum Nutrition {
         }
         return m
     }
+
+    /// Calories implied by macros — digestible carbs at 4, fiber at 2 (matches web).
+    static func caloriesFromMacros(protein: Double, carbs: Double, fiber: Double, fats: Double) -> Double {
+        let digestible = max(carbs - fiber, 0)
+        return (protein * 4 + fats * 9 + digestible * 4 + fiber * 2).rounded()
+    }
 }

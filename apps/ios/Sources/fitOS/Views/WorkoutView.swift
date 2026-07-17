@@ -33,6 +33,9 @@ struct WorkoutView: View {
 struct ExerciseCatalog: View {
     @EnvironmentObject var state: AppState
     @State private var search = ""
+    @State private var detail: Exercise?
+    @State private var editingEx: Exercise?
+    @State private var newEx = false
 
     private var grouped: [(String, [Exercise])] {
         let q = search.trimmingCharacters(in: .whitespaces).lowercased()
@@ -48,19 +51,26 @@ struct ExerciseCatalog: View {
             ForEach(grouped, id: \.0) { category, exercises in
                 Section {
                     ForEach(exercises) { ex in
-                        HStack(spacing: 12) {
-                            Text(ex.icon).font(.system(size: 22))
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(ex.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Palette.text)
-                                Text("\(ex.equipment) · \(ex.primary)").font(.system(size: 12)).foregroundStyle(Palette.faint)
+                        Button { detail = ex } label: {
+                            HStack(spacing: 12) {
+                                Text(ex.icon).font(.system(size: 22))
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(ex.name).font(.system(size: 15, weight: .medium)).foregroundStyle(Palette.text)
+                                    Text("\(ex.equipment) · \(ex.primary)").font(.system(size: 12)).foregroundStyle(Palette.faint)
+                                }
+                                Spacer()
+                                if !ex.weighted {
+                                    Text("bodyweight").font(.system(size: 10, weight: .bold)).foregroundStyle(Palette.ok)
+                                }
+                                Image(systemName: "play.circle").font(.system(size: 16)).foregroundStyle(Palette.faint)
                             }
-                            Spacer()
-                            if !ex.weighted {
-                                Text("bodyweight").font(.system(size: 10, weight: .bold)).foregroundStyle(Palette.ok)
-                            }
+                            .padding(.vertical, 2)
                         }
-                        .padding(.vertical, 2)
                         .listRowBackground(Palette.surface)
+                        .contextMenu {
+                            Button { detail = ex } label: { Label("View demo", systemImage: "play") }
+                            Button { editingEx = ex } label: { Label("Edit exercise", systemImage: "pencil") }
+                        }
                     }
                 } header: { Text(category).eyebrow() }
             }
@@ -68,5 +78,15 @@ struct ExerciseCatalog: View {
         .scrollContentBackground(.hidden)
         .background(Palette.bg)
         .searchable(text: $search, prompt: "Search exercises")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { newEx = true } label: { Image(systemName: "plus") }.tint(Palette.red)
+            }
+        }
+        .sheet(item: $detail) { ex in
+            ExerciseDetailSheet(exercise: ex) { state.addExerciseToday(ex.id) }
+        }
+        .sheet(item: $editingEx) { ExerciseEditorSheet(editing: $0) }
+        .sheet(isPresented: $newEx) { ExerciseEditorSheet(editing: nil) }
     }
 }

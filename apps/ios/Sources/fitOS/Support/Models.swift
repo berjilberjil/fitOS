@@ -148,9 +148,15 @@ struct AppStatePayload: Decodable {
     }
 }
 
+struct ExerciseMedia: Decodable, Equatable {
+    var gif: String?
+    var still: String?
+}
+
 struct Catalog: Decodable {
     var foods: [Food]
     var exercises: [Exercise]
+    var media: [String: ExerciseMedia]?
 }
 
 struct AuthUser: Decodable {

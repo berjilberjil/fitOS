@@ -29,6 +29,8 @@ struct FoodCatalog: View {
     @EnvironmentObject var state: AppState
     @State private var search = ""
     @State private var selected: Food?
+    @State private var editingFood: Food?
+    @State private var newFood = false
 
     private var grouped: [(String, [Food])] {
         let q = search.trimmingCharacters(in: .whitespaces).lowercased()
@@ -45,6 +47,10 @@ struct FoodCatalog: View {
                     ForEach(foods) { food in
                         Button { selected = food } label: { row(food) }
                             .listRowBackground(Palette.surface)
+                            .contextMenu {
+                                Button { selected = food } label: { Label("Log to today", systemImage: "plus") }
+                                Button { editingFood = food } label: { Label("Edit food", systemImage: "pencil") }
+                            }
                     }
                 } header: { Text(category).eyebrow() }
             }
@@ -52,9 +58,16 @@ struct FoodCatalog: View {
         .scrollContentBackground(.hidden)
         .background(Palette.bg)
         .searchable(text: $search, prompt: "Search foods")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { newFood = true } label: { Image(systemName: "plus") }.tint(Palette.red)
+            }
+        }
         .sheet(item: $selected) { food in
             LogFoodSheet(food: food).presentationDetents([.medium])
         }
+        .sheet(item: $editingFood) { FoodEditorSheet(editing: $0) }
+        .sheet(isPresented: $newFood) { FoodEditorSheet(editing: nil) }
     }
 
     private func row(_ f: Food) -> some View {
