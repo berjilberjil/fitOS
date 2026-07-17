@@ -32,3 +32,9 @@ targets:
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "fitOS uses the mic so you can log meals by voice."
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "fitOS transcribes your voice to log foods."
         INFOPLIST_KEY_NSFaceIDUsageDescription: "fitOS uses Face ID to lock the app."
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "fitOS reads your weight and steps from Apple Health."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "fitOS saves the weight you log to Apple Health."
+    entitlements:
+      path: fitOS.entitlements
+      properties:
+        com.apple.developer.healthkit: true

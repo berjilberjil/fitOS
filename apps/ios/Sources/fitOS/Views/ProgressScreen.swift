@@ -3,6 +3,7 @@ import Charts
 
 struct ProgressScreen: View {
     @EnvironmentObject var state: AppState
+    @ObservedObject private var health = HealthService.shared
     @State private var showAddWeight = false
     @State private var newWeight = ""
 
@@ -27,8 +28,50 @@ struct ProgressScreen: View {
             statsCard
             weightCard
             bmiCard
+            healthCard
         }
         .sheet(isPresented: $showAddWeight) { addWeightSheet }
+    }
+
+    @ViewBuilder private var healthCard: some View {
+        if health.isAvailable {
+            Card {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Apple Health").eyebrow()
+                        Spacer()
+                        if health.connected {
+                            Text("connected").font(.system(size: 10.5, weight: .bold)).foregroundStyle(Palette.ok)
+                        }
+                    }
+                    if health.connected {
+                        HStack(alignment: .center) {
+                            StatTile(label: "Steps today", value: "\(health.steps)", accent: Palette.info)
+                            Button { Task { await importWeight() } } label: {
+                                Text("Import weight").font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(Palette.red)
+                                    .padding(.horizontal, 14).padding(.vertical, 9)
+                                    .background(Palette.redSoft).clipShape(Capsule())
+                            }
+                        }
+                    } else {
+                        Button { Task { _ = await health.connect() } } label: {
+                            Text("Connect Apple Health").font(.system(size: 14, weight: .semibold))
+                                .frame(maxWidth: .infinity).padding(.vertical, 11)
+                                .foregroundStyle(Palette.red).background(Palette.redSoft).clipShape(Capsule())
+                        }
+                    }
+                }
+            }
+            .task { if health.connected { await health.refreshSteps() } }
+        }
+    }
+
+    private func importWeight() async {
+        if let kg = await health.latestWeightKg() {
+            state.recordWeight(kg)
+            Haptics.success()
+        }
     }
 
     private var statsCard: some View {
@@ -101,6 +144,8 @@ struct ProgressScreen: View {
             PrimaryButton(title: "Save") {
                 if let kg = Double(newWeight.replacingOccurrences(of: ",", with: ".")) {
                     state.recordWeight(kg)
+                    health.saveWeight(kg)
+                    Haptics.success()
                 }
                 newWeight = ""
                 showAddWeight = false
